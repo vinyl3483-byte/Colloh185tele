@@ -1,0 +1,8 @@
+{
+  "name": "Remix Telefam",
+  "description": "A high-performance, cross-platform messaging app built with C++ and Go, featuring robust offline support and secure authentication.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

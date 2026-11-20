@@ -1,0 +1,3 @@
+headers = TelefamCBridge.h
+package = telefam.company.cinterop
+compilerOpts = -I../../../../cpp/telefam/company/bridge
