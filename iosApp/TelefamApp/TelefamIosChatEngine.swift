@@ -1442,6 +1442,8 @@ final class TelefamIosChatStore: ObservableObject {
                 if !cid.isEmpty { await syncMessages(convId: cid, markAsRead: (activeConversationId == cid)) }
                 await refreshConversations(archived: false)
             }
+        case "stars.updated":
+            NotificationCenter.default.post(name: .telefamStarsUpdatedWs, object: nil, userInfo: obj)
         default: break
         }
     }
@@ -1717,6 +1719,12 @@ final class TelefamIosChatStore: ObservableObject {
         case "sticker": decryptedPlain = "Sent a sticker"
         case "gif": decryptedPlain = "Sent a GIF"
         case "clip": decryptedPlain = "Sent a clip"
+        case "star_gift":
+            if let metaJson = TelefamIosStarsCatalog.decodeBase64JsonString(ciphertextB64) {
+                decryptedPlain = TelefamIosStarsCatalog.formatSummaryLine(rawJson: metaJson)
+            } else {
+                decryptedPlain = "Sent Stars"
+            }
         default:
             if !ciphertextB64.isEmpty,
                let plain = e2ee?.decryptAndDecompress(isOwn: false, ciphertextB64: ciphertextB64, senderCiphertextB64: "", codec: compressionCodec),
@@ -1857,9 +1865,14 @@ final class TelefamIosChatStore: ObservableObject {
         let cachedPlain = (!lastMsgId.isEmpty ? allMsgs[lastMsgId]?.plainText : nil)
             .flatMap { ($0.isEmpty || $0 == "[Encrypted message]") ? nil : $0 }
         let lastType = m["last_message_type"] as? String ?? ""
-        let rawPlain = e2ee?.decryptAndDecompress(isOwn: sender == attachedUserId, ciphertextB64: cB64, senderCiphertextB64: sB64, codec: "zlib")
-            ?? cachedPlain
-            ?? defaultTypeLabel(lastType)
+        let rawPlain: String
+        if lastType == "star_gift", let decodedStar = TelefamIosStarsCatalog.decodeBase64JsonString(cB64) {
+            rawPlain = TelefamIosStarsCatalog.formatSummaryLine(rawJson: decodedStar)
+        } else {
+            rawPlain = e2ee?.decryptAndDecompress(isOwn: sender == attachedUserId, ciphertextB64: cB64, senderCiphertextB64: sB64, codec: "zlib")
+                ?? cachedPlain
+                ?? defaultTypeLabel(lastType)
+        }
         let plain = (lastType == "call_log" || lastType == "call_request")
             ? TelefamIosCallMetaParser.summaryPreview(plainText: rawPlain, messageType: lastType)
             : rawPlain
@@ -1896,8 +1909,16 @@ final class TelefamIosChatStore: ObservableObject {
         let cB64 = m["ciphertext_b64"] as? String ?? ""
         let sB64 = m["sender_ciphertext_b64"] as? String ?? ""
         let codec = m["compression_codec"] as? String ?? "zlib"
-        let plain = e2ee?.decryptAndDecompress(isOwn: sender == attachedUserId, ciphertextB64: cB64, senderCiphertextB64: sB64, codec: codec)
-            ?? (fallbackPlain.isEmpty ? "[Encrypted message]" : fallbackPlain)
+        let msgType = m["message_type"] as? String ?? "text"
+        let encScheme = m["encryption_scheme"] as? String ?? "telefam_ecdh_v1"
+        let plain: String
+        if (msgType == "star_gift" || encScheme == "telefam_star_meta_v1"),
+           let starJson = TelefamIosStarsCatalog.decodeBase64JsonString(cB64) {
+            plain = starJson
+        } else {
+            plain = e2ee?.decryptAndDecompress(isOwn: sender == attachedUserId, ciphertextB64: cB64, senderCiphertextB64: sB64, codec: codec)
+                ?? (fallbackPlain.isEmpty ? "[Encrypted message]" : fallbackPlain)
+        }
         return TelefamIosChatMessage(
             messageId: m["message_id"] as? String ?? "",
             conversationId: m["conversation_id"] as? String ?? "",
@@ -1946,6 +1967,7 @@ final class TelefamIosChatStore: ObservableObject {
         case "clip": return "Clip"
         case "voice": return "Voice message"
         case "voice_once": return "View-once voice"
+        case "star_gift": return TelefamIosStarsCatalog.formatSummaryLine(rawJson: msg.plainText)
         case "call_log", "call_request":
             return TelefamIosCallMetaParser.summaryPreview(plainText: msg.plainText, messageType: msg.messageType)
         default: return msg.plainText
@@ -1958,6 +1980,7 @@ final class TelefamIosChatStore: ObservableObject {
         case "sticker": return "Sticker"
         case "gif": return "GIF"
         case "clip": return "Clip"
+        case "star_gift": return "Sent Stars"
         case "call_log": return "Call"
         case "call_request": return "Call request"
         default: return ""

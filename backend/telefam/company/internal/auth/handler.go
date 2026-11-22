@@ -28,6 +28,8 @@ import (
 	"telefam.company/backend/internal/posts"
 	"telefam.company/backend/internal/ratelimit"
 	"telefam.company/backend/internal/security"
+	"telefam.company/backend/internal/stars"
+	"telefam.company/backend/internal/verification"
 )
 
 type RequestOtpPayload struct {
@@ -202,6 +204,8 @@ type Handler struct {
 	linkSvc             *links.Service
 	notifs              *notifications.Service
 	calls               *calls.Service
+	stars               *stars.Service
+	verSvc              *verification.Service
 	mu                  sync.Mutex
 	profiles            map[string]storedProfile
 	usernames           map[string]string
@@ -341,6 +345,23 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/calls", h.handleStartCall)
 	mux.HandleFunc("GET /v1/calls/{callId}", h.handleGetCallState)
 	mux.HandleFunc("POST /v1/calls/{callId}/signal", h.handleCallSignal)
+	mux.HandleFunc("GET /v1/stars/summary", h.handleGetStarsSummary)
+	mux.HandleFunc("POST /v1/stars/checkout/init", h.handleInitStarsCheckout)
+	mux.HandleFunc("POST /v1/stars/checkout/verify", h.handleVerifyStarsCheckout)
+	mux.HandleFunc("POST /v1/stars/send", h.handleSendStarsInChat)
+	mux.HandleFunc("GET /v1/stars/payment-return", h.handleStarsPaymentReturn)
+	mux.HandleFunc("GET /v1/verification/status", h.handleGetVerificationStatus)
+	mux.HandleFunc("POST /v1/verification/trial/activate", h.handleActivateVerificationTrial)
+	mux.HandleFunc("POST /v1/verification/checkout/init", h.handleInitVerificationCheckout)
+	mux.HandleFunc("POST /v1/verification/checkout/verify", h.handleVerifyVerificationCheckout)
+	mux.HandleFunc("POST /v1/verification/liveness/session", h.handleIssueLivenessSession)
+	mux.HandleFunc("POST /v1/verification/liveness/submit", h.handleSubmitLiveness)
+	mux.HandleFunc("POST /v1/verification/document/session", h.handleIssueDocumentSession)
+	mux.HandleFunc("POST /v1/verification/document/submit", h.handleSubmitDocument)
+	mux.HandleFunc("POST /v1/verification/review/complete", h.handleCompleteVerificationReview)
+	mux.HandleFunc("GET /v1/verification/payment-return", h.handleVerificationPaymentReturn)
+	mux.HandleFunc("POST /v1/webhooks/paystack", h.handlePaystackWebhook)
+	mux.HandleFunc("POST /v1/webhooks/paypal", h.handlePayPalWebhook)
 	mux.HandleFunc("PUT /v1/settings/notifications", h.handleUpdateNotificationSettings)
 	mux.HandleFunc("POST /v1/notifications/push-token", h.handleRegisterPushToken)
 	mux.HandleFunc("DELETE /v1/notifications/push-token", h.handleUnregisterPushToken)
@@ -1228,6 +1249,7 @@ type UserProfileResponse struct {
 	FullName             string                  `json:"full_name"`
 	Username             string                  `json:"username"`
 	AvatarURL            string                  `json:"avatar_url"`
+	VerifiedTier         string                  `json:"verified_tier,omitempty"`
 	Bio                  string                  `json:"bio"`
 	Location             string                  `json:"location"`
 	CountryISO           string                  `json:"country_iso"`
@@ -1330,13 +1352,15 @@ func (h *Handler) handleGetUserProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authorPosts := h.posts.ListAuthorPosts(targetID)
+	verifiedTier := h.ensureVerificationService().VerifiedTierForUser(targetID)
 	authorSummary := feeds.AuthorSummary{
-		UserID:      u.UserID,
-		Username:    u.Username,
-		FullName:    u.FullName,
-		AvatarURL:   avatarURL,
-		IsFollowing: isFollowing,
-		FollowsYou:  followsYou,
+		UserID:       u.UserID,
+		Username:     u.Username,
+		FullName:     u.FullName,
+		AvatarURL:    avatarURL,
+		VerifiedTier: verifiedTier,
+		IsFollowing:  isFollowing,
+		FollowsYou:   followsYou,
 	}
 	feedItems, lockedItems, likesCount := h.feeds.BuildAuthorFeedItems(claims.UserID, authorPosts, authorSummary)
 	if !isOwner && targetPrivacy.IsPrivateAccount && !isFollowing {
@@ -1385,6 +1409,7 @@ func (h *Handler) handleGetUserProfile(w http.ResponseWriter, r *http.Request) {
 		FullName:             u.FullName,
 		Username:             u.Username,
 		AvatarURL:            avatarURL,
+		VerifiedTier:         verifiedTier,
 		Bio:                  sp.Bio,
 		Location:             u.Country,
 		CountryISO:           u.CountryISO,
@@ -2129,18 +2154,20 @@ func (h *Handler) handleFeedDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) resolveAuthorSummary(viewerID, authorID string) feeds.AuthorSummary {
+	verifiedTier := h.ensureVerificationService().VerifiedTierForUser(authorID)
 	if u, ok, isFollowing, followsYou := h.contacts.GetUserRelationshipForViewer(viewerID, authorID); ok {
 		avatar := ""
 		if u.AvatarMediaID != "" {
 			avatar = "/v1/media/avatar/" + u.AvatarMediaID
 		}
 		return feeds.AuthorSummary{
-			UserID:      u.UserID,
-			Username:    u.Username,
-			FullName:    u.FullName,
-			AvatarURL:   avatar,
-			IsFollowing: isFollowing,
-			FollowsYou:  followsYou,
+			UserID:       u.UserID,
+			Username:     u.Username,
+			FullName:     u.FullName,
+			AvatarURL:    avatar,
+			VerifiedTier: verifiedTier,
+			IsFollowing:  isFollowing,
+			FollowsYou:   followsYou,
 		}
 	}
 	h.mu.Lock()
@@ -2152,16 +2179,18 @@ func (h *Handler) resolveAuthorSummary(viewerID, authorID string) feeds.AuthorSu
 			avatar = "/v1/media/avatar/" + p.AvatarMediaID
 		}
 		return feeds.AuthorSummary{
-			UserID:    p.UserID,
-			Username:  p.Username,
-			FullName:  p.FullName,
-			AvatarURL: avatar,
+			UserID:       p.UserID,
+			Username:     p.Username,
+			FullName:     p.FullName,
+			AvatarURL:    avatar,
+			VerifiedTier: verifiedTier,
 		}
 	}
 	return feeds.AuthorSummary{
-		UserID:   authorID,
-		Username: "member",
-		FullName: "Telefam Member",
+		UserID:       authorID,
+		Username:     "member",
+		FullName:     "Telefam Member",
+		VerifiedTier: verifiedTier,
 	}
 }
 

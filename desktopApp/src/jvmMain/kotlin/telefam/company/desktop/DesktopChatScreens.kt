@@ -80,6 +80,7 @@ fun DesktopChatsSplitScreen(
   onOpenUserProfile: (String) -> Unit,
   onOpenPrivacyAndThemes: () -> Unit,
   onStartCall: (DesktopChatConversation, DesktopCallType) -> Unit = { _, _ -> },
+  onOpenSendStars: (DesktopChatConversation) -> Unit = {},
   onToast: (String) -> Unit,
 ) {
   val conversations by controller.conversations.collectAsState()
@@ -152,6 +153,7 @@ fun DesktopChatsSplitScreen(
               onOpenUserProfile = onOpenUserProfile,
               onOpenPrivacyAndThemes = onOpenPrivacyAndThemes,
               onStartCall = { type -> onStartCall(curConv, type) },
+              onOpenSendStars = { onOpenSendStars(curConv) },
               onToast = onToast,
             )
           } else {
@@ -177,6 +179,7 @@ fun DesktopChatsSplitScreen(
           onOpenUserProfile = onOpenUserProfile,
           onOpenPrivacyAndThemes = onOpenPrivacyAndThemes,
           onStartCall = { type -> onStartCall(curConv, type) },
+          onOpenSendStars = { onOpenSendStars(curConv) },
           onToast = onToast,
         )
       } else {
@@ -529,6 +532,7 @@ private fun DesktopOneOnOneChatPane(
   onOpenUserProfile: (String) -> Unit,
   onOpenPrivacyAndThemes: () -> Unit,
   onStartCall: (DesktopCallType) -> Unit = {},
+  onOpenSendStars: () -> Unit = {},
   onToast: (String) -> Unit,
 ) {
   val messages by controller.activeMessages.collectAsState()
@@ -928,7 +932,7 @@ private fun DesktopOneOnOneChatPane(
           // Hide Gift & Paperclip while typing to maximize message space
           if (!isTyping && !isRecording) {
             Surface(
-              onClick = { onToast("Gifts — Coming soon") },
+              onClick = { if (!conv.capabilities.isBlocked) onOpenSendStars() },
               shape = CircleShape,
               color = Color.Transparent,
               modifier = Modifier.size(38.dp),

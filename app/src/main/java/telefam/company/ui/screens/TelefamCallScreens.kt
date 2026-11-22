@@ -670,7 +670,7 @@ private fun TelefamActiveCallScreen(
               colors = ButtonDefaults.buttonColors(containerColor = TelefamCrimson),
               modifier = Modifier.testTag("call_not_allowed_close"),
             ) {
-              Text(stringResource(R.string.close_button), color = TelefamPureWhite)
+              Text(stringResource(R.string.browser_close), color = TelefamPureWhite)
             }
           }
         }

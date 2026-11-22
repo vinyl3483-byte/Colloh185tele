@@ -2421,11 +2421,13 @@ class DesktopApiClient(
     method: String,
     path: String,
     jsonBody: String? = null,
+    extraHeaders: Map<String, String> = emptyMap(),
   ): Pair<Int, String>? = executeRaw(
     method = method,
     path = path,
     body = jsonBody?.toByteArray(StandardCharsets.UTF_8),
     auth = true,
+    extraHeaders = extraHeaders,
   )
 
   fun registerPushToken(token: String = "desktop_${deviceFingerprint.take(24)}"): Boolean {

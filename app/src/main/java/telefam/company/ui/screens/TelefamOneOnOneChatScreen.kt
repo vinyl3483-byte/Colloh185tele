@@ -159,6 +159,7 @@ fun TelefamOneOnOneChatScreen(
   onStartAudioCall: () -> Unit = {},
   onStartVideoCall: () -> Unit = {},
   onCallBackFromLog: (TelefamCallType) -> Unit = {},
+  onOpenSendStars: () -> Unit = {},
   showEmbeddedSplitHeader: Boolean = false,
 ) {
   val context = LocalContext.current
@@ -687,7 +688,7 @@ fun TelefamOneOnOneChatScreen(
               // Hide Gift and Paperclip smoothly when user starts typing to free input space!
               if (!hasText) {
                 IconButton(
-                  onClick = { if (!isBlockedChat) onTriggerComingSoon("Gift", "chat_gift_tapped") },
+                  onClick = { if (!isBlockedChat) onOpenSendStars() },
                   enabled = !isBlockedChat,
                   modifier = Modifier
                     .size(36.dp)

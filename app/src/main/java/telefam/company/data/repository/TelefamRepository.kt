@@ -327,6 +327,17 @@ class TelefamRepository(
     )
   }
 
+  fun createStarsController(scope: kotlinx.coroutines.CoroutineScope): telefam.company.stars.TelefamStarsController {
+    return telefam.company.stars.TelefamStarsController(
+      scope = scope,
+      repository = this,
+    )
+  }
+
+  internal fun getApiServiceOrNull(): TelefamApiService? = apiService
+
+  internal suspend fun getDeviceFingerprint(): String = buildDeviceFingerprint()
+
   suspend fun getStreamCredentials(): Pair<String, String> {
     val access = identityStore.sessionFlow.first().accessToken.orEmpty()
     val fp = buildDeviceFingerprint()

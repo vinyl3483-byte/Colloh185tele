@@ -85,10 +85,14 @@ import telefam.company.ui.screens.TelefamInAppBrowserScreen
 import telefam.company.ui.screens.TelefamNotificationsSheet
 import telefam.company.ui.screens.TelefamOneOnOneChatScreen
 import telefam.company.ui.screens.TelefamPostScreen
+import telefam.company.ui.screens.TelefamProfileMenuScreen
 import telefam.company.ui.screens.TelefamProfileSetupScreen
 import telefam.company.ui.screens.TelefamSearchScreen
 import telefam.company.ui.screens.TelefamSettingsScreen
+import telefam.company.ui.screens.TelefamStarsHostScreen
 import telefam.company.ui.screens.TelefamUserProfileScreen
+import telefam.company.ui.components.TelefamAnimated3DStarEmblem
+import telefam.company.stars.TelefamStarsCatalog
 import telefam.company.ui.theme.TelefamTheme
 import telefam.company.ui.theme.ThemeMode
 import telefam.company.ui.viewmodel.AuthStep
@@ -124,6 +128,7 @@ class TelefamMainActivity : ComponentActivity() {
     setContent {
       val uiState by viewModel.uiState.collectAsStateWithLifecycle()
       val callUiState by viewModel.callController.uiState.collectAsStateWithLifecycle()
+      val starsState by viewModel.starsController.state.collectAsStateWithLifecycle()
       val systemDark = isSystemInDarkTheme()
       val useDarkBars = when (uiState.themeMode) {
         ThemeMode.SYSTEM -> systemDark
@@ -152,6 +157,8 @@ class TelefamMainActivity : ComponentActivity() {
         uiState.incomingLoginRequest != null,
         uiState.loginApprovedOverlay != null,
         uiState.inAppBrowserState != null,
+        starsState.isOpen,
+        starsState.currentRoute,
         callUiState.isSessionVisible && !callUiState.isMinimizedToChat,
       ) {
         val isApprovalOverlayVisible =
@@ -161,6 +168,7 @@ class TelefamMainActivity : ComponentActivity() {
         val isFullCallVisible = callUiState.isSessionVisible && !callUiState.isMinimizedToChat
         val statusBarIsDark = when {
           isFullCallVisible || isApprovalOverlayVisible || isWaitScreenVisible -> true
+          route == AppRootRoute.HOME && starsState.isOpen -> true
           route == AppRootRoute.HOME && uiState.inAppBrowserState != null -> useDarkBars
           uiState.postComposer.isOpen -> true
           route == AppRootRoute.HOME && uiState.showNotificationsSheet -> true
@@ -470,7 +478,7 @@ class TelefamMainActivity : ComponentActivity() {
                   onOpenEditProfile = viewModel::openEditProfileModal,
                   onOpenProfileBackgrounds = viewModel::openOwnerBackgroundsModal,
                   onOpenProfileSettings = viewModel::openOwnerSettingsModal,
-                  onMenuClick = { viewModel.triggerComingSoon("Menu", "profile_menu_tapped") },
+                  onMenuClick = viewModel::openOwnerMenuModal,
                   onSelectProfileFilter = viewModel::selectProfilePostFilter,
                   onSelectProfileSort = viewModel::selectProfileSortOrder,
                   onOpenProfilePostViewer = viewModel::openProfilePostViewer,
@@ -576,6 +584,11 @@ class TelefamMainActivity : ComponentActivity() {
                             )
                           }
                         },
+                        onOpenSendStars = {
+                          val country = uiState.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+                            ?: uiState.profileForm.selectedCountry.iso
+                          viewModel.starsController.openSendStarsFromChat(splitConv, country, uiState.profileForm.location)
+                        },
                         showEmbeddedSplitHeader = true,
                       )
                     }
@@ -667,6 +680,11 @@ class TelefamMainActivity : ComponentActivity() {
                       callType = cType,
                     )
                   }
+                },
+                onOpenSendStars = {
+                  val country = uiState.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+                    ?: uiState.profileForm.selectedCountry.iso
+                  viewModel.starsController.openSendStarsFromChat(activeConv, country, uiState.profileForm.location)
                 },
                 showEmbeddedSplitHeader = false,
               )
@@ -784,7 +802,7 @@ class TelefamMainActivity : ComponentActivity() {
                 onOpenEditProfile = viewModel::openEditProfileModal,
                 onOpenBackgrounds = viewModel::openOwnerBackgroundsModal,
                 onOpenSettings = viewModel::openOwnerSettingsModal,
-                onOpenMenu = { viewModel.triggerComingSoon("Menu", "profile_menu_tapped") },
+                onOpenMenu = viewModel::openOwnerMenuModal,
                 onSelectFilter = { filter -> viewModel.selectProfilePostFilter(activeProfile.userId, filter) },
                 onSelectSort = { sort -> viewModel.selectProfileSortOrder(activeProfile.userId, sort) },
                 onOpenPostAtIndex = viewModel::openProfilePostViewer,
@@ -957,6 +975,50 @@ class TelefamMainActivity : ComponentActivity() {
               onDismissLogoutDialog = viewModel::dismissLogoutConfirmation,
               onToggleLogoutAllDevices = viewModel::setLogoutAllDevicesChoice,
               onConfirmLogout = viewModel::confirmSignOut,
+            )
+          }
+
+          AnimatedVisibility(
+            visible = route == AppRootRoute.HOME && uiState.showProfileMenuModal,
+            enter = slideInVertically(initialOffsetY = { it / 6 }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it / 6 }) + fadeOut(),
+          ) {
+            TelefamProfileMenuScreen(
+              onBack = viewModel::dismissOwnerMenuModal,
+              onOpenStars = {
+                viewModel.dismissOwnerMenuModal()
+                val country = uiState.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+                  ?: uiState.profileForm.selectedCountry.iso
+                viewModel.starsController.openStarsHub(country, uiState.profileForm.location)
+              },
+              onFeatureComingSoon = { label ->
+                viewModel.triggerComingSoon(label, "profile_menu_${label.lowercase().replace(' ', '_')}")
+              },
+            )
+          }
+
+          AnimatedVisibility(
+            visible = route == AppRootRoute.HOME && starsState.isOpen,
+            enter = slideInVertically(initialOffsetY = { it / 6 }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it / 6 }) + fadeOut(),
+          ) {
+            TelefamStarsHostScreen(
+              state = starsState,
+              onBack = viewModel.starsController::navigateBack,
+              onRefresh = { viewModel.starsController.refreshSummary(silent = false) },
+              onSelectHubTab = viewModel.starsController::selectHubTab,
+              onOpenBuyStars = { viewModel.starsController.openBuyStars() },
+              onSelectPackageForCheckout = viewModel.starsController::selectPackageForCheckout,
+              onSendStarsTier = viewModel.starsController::sendStarsTier,
+              onSelectProvider = viewModel.starsController::selectPaymentProvider,
+              onProceedToPay = viewModel.starsController::proceedToPay,
+              onCloseCheckoutWebView = viewModel.starsController::dismissCheckoutWebView,
+              onPaymentReturnCaptured = viewModel.starsController::handlePaymentReturnDeepLink,
+              onOpenPeerProfile = { peerUid ->
+                viewModel.starsController.closeAll()
+                viewModel.openUserProfile(peerUid)
+              },
+              onDismissToast = viewModel.starsController::dismissStatusMessage,
             )
           }
 
@@ -1188,6 +1250,43 @@ class TelefamMainActivity : ComponentActivity() {
             )
           }
 
+          val burstStars = starsState.celebrationStarsBurst
+          LaunchedEffect(burstStars) {
+            if (burstStars != null) {
+              delay(2_200L)
+              viewModel.starsController.dismissCelebrationBurst()
+            }
+          }
+          AnimatedVisibility(
+            visible = route == AppRootRoute.HOME && burstStars != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+          ) {
+            if (burstStars != null) {
+              Box(
+                modifier = Modifier
+                  .fillMaxSize()
+                  .testTag("stars_celebration_overlay"),
+                contentAlignment = Alignment.Center,
+              ) {
+                Surface(
+                  shape = RoundedCornerShape(26.dp),
+                  color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                  shadowElevation = 12.dp,
+                ) {
+                  Box(modifier = Modifier.padding(horizontal = 30.dp, vertical = 22.dp)) {
+                    TelefamAnimated3DStarEmblem(
+                      starsAmount = burstStars,
+                      baseSize = if (burstStars >= 1_000L) 108.dp else 88.dp,
+                      showTelefamWordmark = true,
+                      isDarkTheme = useDarkBars,
+                    )
+                  }
+                }
+              }
+            }
+          }
+
           TelefamAnimatedSplashOverlay(visible = showSplash)
         }
         }
@@ -1204,6 +1303,15 @@ class TelefamMainActivity : ComponentActivity() {
   private fun handleVerificationIntent(intent: Intent?) {
     if (intent == null) return
     val data: Uri? = intent.data
+    if (data?.scheme == "telefam" && data.host == "stars") {
+      viewModel.starsController.handlePaymentReturnDeepLink(
+        paymentId = data.getQueryParameter("payment_id").orEmpty(),
+        reference = data.getQueryParameter("reference").orEmpty().ifBlank { data.getQueryParameter("trxref").orEmpty() },
+        paypalOrderId = data.getQueryParameter("paypal_order_id").orEmpty().ifBlank { data.getQueryParameter("token").orEmpty() },
+        status = data.getQueryParameter("status").orEmpty(),
+      )
+      return
+    }
     val token = data?.getQueryParameter("token")
     if (!token.isNullOrBlank()) {
       viewModel.handleVerificationDeepLink(token)

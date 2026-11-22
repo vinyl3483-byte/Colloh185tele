@@ -110,7 +110,7 @@ class TelefamFcmService : FirebaseMessagingService() {
         }
       }
 
-      "follow", "like", "mention" -> {
+      "follow", "like", "mention", "star_received" -> {
         val notifId = data["notification_id"].orEmpty().trim()
           .ifBlank { "fcm_${type}_${data["actor_user_id"].orEmpty()}_${data["post_id"].orEmpty()}_${System.currentTimeMillis()}" }
         val actorUserId = data["actor_user_id"].orEmpty().trim()
@@ -121,10 +121,12 @@ class TelefamFcmService : FirebaseMessagingService() {
         val title = data["title"].orEmpty().trim().ifBlank {
           actorName.ifBlank { actorUsername.ifBlank { "Telefam" } }
         }
+        val starsAmount = data["stars_amount"]?.toLongOrNull() ?: 0L
         val body = data["body"].orEmpty().trim().ifBlank {
           when (type) {
             "follow" -> "Started following you"
             "like" -> "Liked your post"
+            "star_received" -> if (starsAmount > 0L) "Sent you $starsAmount Telefam Stars" else "Sent you Telefam Stars"
             else -> "Mentioned you"
           }
         }
@@ -153,6 +155,9 @@ class TelefamFcmService : FirebaseMessagingService() {
             createdAtMs = createdAtMs,
           ),
         )
+        if (type == "star_received" && conversationId.isNotBlank()) {
+          runCatching { repo.chatRepository.loadConversationMessages(conversationId, markAsRead = false) }
+        }
 
         val notifAllowed = settings == null || TelefamNotificationManager.shouldDeliverPushNotification(settings, type)
         if (notifAllowed) {

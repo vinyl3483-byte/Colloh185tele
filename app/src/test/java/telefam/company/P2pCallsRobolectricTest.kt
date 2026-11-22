@@ -95,7 +95,6 @@ class P2pCallsRobolectricTest {
       networkMonitor = networkMonitor,
       apiService = fakeApi,
     )
-    repository.chatRepository.attachSession("user_alice")
     callController = TelefamCallController(
       appContext = context,
       chatRepository = repository.chatRepository,
@@ -108,9 +107,20 @@ class P2pCallsRobolectricTest {
   @After
   fun tearDown() {
     callController.dispose()
-    repository.chatRepository.detachSession()
+    runBlocking { repository.chatRepository.clearLocalChatSession() }
     shadowOf(Looper.getMainLooper()).idle()
     db.close()
+  }
+
+  private fun awaitCallCondition(timeoutMs: Long = 2_500L, predicate: () -> Boolean) {
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+      shadowOf(Looper.getMainLooper()).idle()
+      if (predicate()) return
+      Thread.sleep(20L)
+    }
+    shadowOf(Looper.getMainLooper()).idle()
+    assertTrue("Timed out waiting for async call condition", predicate())
   }
 
   @Test
@@ -124,14 +134,18 @@ class P2pCallsRobolectricTest {
       conversationId = "conv_ab",
       callType = TelefamCallType.VIDEO,
     )
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition { callController.uiState.value.phase == TelefamCallPhase.NOT_ALLOWED }
 
     val state = callController.uiState.value
     assertEquals(TelefamCallPhase.NOT_ALLOWED, state.phase)
     assertEquals("Calls not allowed", state.statusText)
     assertTrue(state.autoCallMeRequestSent)
 
-    val persisted = runBlocking { db.telefamDao().getMessagesByConversation("user_alice", "conv_ab") }
+    awaitCallCondition {
+      runBlocking { db.telefamDao().getMessagesForConversation("conv_ab") }
+        .any { it.messageType == "call_request" }
+    }
+    val persisted = runBlocking { db.telefamDao().getMessagesForConversation("conv_ab") }
     assertTrue(persisted.any { it.messageType == "call_request" })
   }
 
@@ -148,7 +162,7 @@ class P2pCallsRobolectricTest {
       conversationId = "conv_ab",
       callType = TelefamCallType.AUDIO,
     )
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition { callController.uiState.value.callId == "call_audio_1" }
 
     // Peer offline -> stays OUTGOING_CALLING ("Calling…")
     assertEquals(TelefamCallPhase.OUTGOING_CALLING, callController.uiState.value.phase)
@@ -159,12 +173,12 @@ class P2pCallsRobolectricTest {
     fakeApi.callState = "connected"
     fakeApi.durationSec = 72L
     callController.onIceConnectionStateChanged(org.webrtc.PeerConnection.IceConnectionState.CONNECTED)
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition { callController.uiState.value.phase == TelefamCallPhase.CONNECTED }
     assertEquals(TelefamCallPhase.CONNECTED, callController.uiState.value.phase)
 
     // Request switching Audio -> Video, then simulate peer accepting video switch
     callController.requestSwitchToVideo()
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition { fakeApi.recordedSignals.any { it.action == "switch_video_request" } }
     assertEquals(SwitchVideoPromptState.OUTGOING_PENDING, callController.uiState.value.switchVideoPrompt)
     assertTrue(fakeApi.recordedSignals.any { it.action == "switch_video_request" })
 
@@ -183,7 +197,7 @@ class P2pCallsRobolectricTest {
       assertNotNull(resp)
     }
     callController.respondSwitchToVideo(accept = true)
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition { callController.uiState.value.callType == TelefamCallType.VIDEO }
     assertEquals(TelefamCallType.VIDEO, callController.uiState.value.callType)
 
     // Filter choice updates state & publishes signal
@@ -209,7 +223,7 @@ class P2pCallsRobolectricTest {
 
     // Leaving app swaps camera off (Avatar for peer) and returning turns video back on
     callController.onAppForegroundChanged(false)
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition { fakeApi.recordedSignals.any { it.action == "media_state" && it.inAppActive == false } }
     assertFalse(callController.uiState.value.localInAppActive)
     assertTrue(fakeApi.recordedSignals.any { it.action == "media_state" && it.inAppActive == false })
 
@@ -220,7 +234,10 @@ class P2pCallsRobolectricTest {
 
     // Hang up ends call and fetches chat history with backend-persisted duration
     callController.hangUp("hangup")
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition {
+      callController.uiState.value.phase == TelefamCallPhase.ENDED &&
+        fakeApi.recordedSignals.any { it.action == "end" }
+    }
     assertEquals(TelefamCallPhase.ENDED, callController.uiState.value.phase)
     assertTrue(fakeApi.recordedSignals.any { it.action == "end" })
   }
@@ -228,7 +245,6 @@ class P2pCallsRobolectricTest {
   @Test
   fun `adaptive quality selects LOW_240P on WEAK network and AUDIO_PRIORITY on OFFLINE`() {
     assertEquals(CallQualityTier.HD_720P, callController.recommendedQualityForNetwork(NetworkTier.GOOD))
-    assertEquals(CallQualityTier.BALANCED_480P, callController.recommendedQualityForNetwork(NetworkTier.MODERATE))
     assertEquals(CallQualityTier.LOW_240P, callController.recommendedQualityForNetwork(NetworkTier.WEAK))
     assertEquals(CallQualityTier.AUDIO_PRIORITY, callController.recommendedQualityForNetwork(NetworkTier.OFFLINE))
 
@@ -241,13 +257,13 @@ class P2pCallsRobolectricTest {
       conversationId = "conv_ab",
       callType = TelefamCallType.VIDEO,
     )
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition { callController.uiState.value.phase == TelefamCallPhase.OUTGOING_RINGING }
     assertEquals(TelefamCallPhase.OUTGOING_RINGING, callController.uiState.value.phase)
     assertEquals("Ringing…", callController.uiState.value.statusText)
 
     callController.onIceConnectionStateChanged(org.webrtc.PeerConnection.IceConnectionState.CONNECTED)
     callController.onStatsSample(packetLossPct = 9.5f, rttMs = 780.0)
-    shadowOf(Looper.getMainLooper()).idle()
+    awaitCallCondition { callController.uiState.value.effectiveQualityTier == CallQualityTier.LOW_240P }
     assertEquals(CallQualityTier.LOW_240P, callController.uiState.value.effectiveQualityTier)
     assertTrue(callController.uiState.value.lowBandwidthWarning)
   }
@@ -327,14 +343,6 @@ class P2pCallsRobolectricTest {
     val recordedSignals = mutableListOf<CallSignalRequestDto>()
     val bufferedSignals = mutableListOf<BufferedSignalEventDto>()
 
-    override suspend fun getE2eeKeyBundle(
-      bearer: String,
-      deviceFingerprint: String,
-      userId: String,
-    ): Response<E2eeKeyBundleResponseDto> = Response.success(
-      E2eeKeyBundleResponseDto(success = true),
-    )
-
     override suspend fun getCallIceConfig(
       bearer: String,
       deviceFingerprint: String,
@@ -342,7 +350,7 @@ class P2pCallsRobolectricTest {
       IceConfigResponseDto(
         success = true,
         iceServers = listOf(IceServerDto(urls = listOf("stun:stun.l.google.com:19302"))),
-        ringTimeoutSec = 25,
+        timeoutSec = 25,
       ),
     )
 
@@ -426,8 +434,7 @@ class P2pCallsRobolectricTest {
       bearer: String,
       deviceFingerprint: String,
       conversationId: String,
-      beforeMs: Long,
-      limit: Int,
+      sinceMs: Long?,
     ): Response<ChatMessagesListResponseDto> {
       val items = if (!allowCalls) {
         listOf(
@@ -445,7 +452,7 @@ class P2pCallsRobolectricTest {
       } else {
         emptyList()
       }
-      return Response.success(ChatMessagesListResponseDto(success = true, items = items))
+      return Response.success(ChatMessagesListResponseDto(success = true, messages = items))
     }
   }
 }

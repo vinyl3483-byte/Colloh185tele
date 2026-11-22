@@ -1009,6 +1009,7 @@ class DesktopChatController(
           "sticker" -> "Sent a sticker"
           "gif" -> "Sent a GIF"
           "clip" -> "Sent a clip"
+          "star_gift" -> DesktopStarsCatalog.formatSummaryLine(latestIncoming.plainText)
           "call_log", "call_request" -> DesktopCallMetaParser.formatSummaryLine(latestIncoming.messageType, latestIncoming.plainText)
           else -> latestIncoming.plainText.lineSequence().firstOrNull().orEmpty().take(120)
             .ifBlank { "New encrypted message" }
@@ -1034,12 +1035,19 @@ class DesktopChatController(
     val lastCipher = DesktopJson.str(m, "last_ciphertext_b64")
     val lastSelfCipher = DesktopJson.str(m, "last_sender_ciphertext_b64")
     val lastType = DesktopJson.str(m, "last_message_type")
-    val decryptedOrCached = e2ee?.decryptAndDecompress(lastSender == ownerUid, lastCipher, lastSelfCipher, "zlib")
-      ?: localStore?.messages?.get(lastMessageId)?.plainText?.takeIf { it.isNotBlank() && it != "[Encrypted message]" }
-    val plain = if (lastType == "call_log" || lastType == "call_request") {
-      DesktopCallMetaParser.formatSummaryLine(lastType, decryptedOrCached ?: "")
+    val lastScheme = DesktopJson.str(m, "last_encryption_scheme")
+    val decryptedOrCached = if (lastType == "star_gift" || lastScheme == "telefam_star_meta_v1") {
+      DesktopStarsCatalog.decodeB64Json(lastCipher.ifBlank { lastSelfCipher })
+        .takeIf { it.isNotBlank() }
     } else {
-      decryptedOrCached ?: when (lastType) {
+      e2ee?.decryptAndDecompress(lastSender == ownerUid, lastCipher, lastSelfCipher, "zlib")
+    } ?: localStore?.messages?.get(lastMessageId)?.plainText?.takeIf { it.isNotBlank() && it != "[Encrypted message]" }
+    val plain = when {
+      lastType == "star_gift" || lastScheme == "telefam_star_meta_v1" ->
+        DesktopStarsCatalog.formatSummaryLine(decryptedOrCached ?: "")
+      lastType == "call_log" || lastType == "call_request" ->
+        DesktopCallMetaParser.formatSummaryLine(lastType, decryptedOrCached ?: "")
+      else -> decryptedOrCached ?: when (lastType) {
         "voice", "voice_once" -> "Voice message"
         "sticker" -> "Sticker"
         "gif" -> "GIF"
@@ -1076,17 +1084,23 @@ class DesktopChatController(
     val cipher = DesktopJson.str(m, "ciphertext_b64")
     val selfCipher = DesktopJson.str(m, "sender_ciphertext_b64")
     val codec = DesktopJson.str(m, "compression_codec").ifBlank { "zlib" }
-    val decoded = e2ee?.decryptAndDecompress(senderId == ownerUid, cipher, selfCipher, codec)
-      ?: fallbackPlain.ifBlank { "[Encrypted message]" }
+    val msgType = DesktopJson.str(m, "message_type").ifBlank { "text" }
+    val scheme = DesktopJson.str(m, "encryption_scheme").ifBlank { "telefam_ecdh_v1" }
+    val decoded = if (scheme == "telefam_star_meta_v1" || msgType == "star_gift") {
+      DesktopStarsCatalog.decodeB64Json(cipher.ifBlank { selfCipher }).ifBlank { fallbackPlain }
+    } else {
+      e2ee?.decryptAndDecompress(senderId == ownerUid, cipher, selfCipher, codec)
+        ?: fallbackPlain.ifBlank { "[Encrypted message]" }
+    }
     return DesktopChatMessage(
       messageId = DesktopJson.str(m, "message_id"),
       conversationId = DesktopJson.str(m, "conversation_id"),
       senderUserId = senderId,
       recipientUserId = DesktopJson.str(m, "recipient_user_id"),
       clientOpId = DesktopJson.str(m, "client_op_id"),
-      messageType = DesktopJson.str(m, "message_type").ifBlank { "text" },
+      messageType = msgType,
       compressionCodec = codec,
-      encryptionScheme = DesktopJson.str(m, "encryption_scheme").ifBlank { "telefam_ecdh_v1" },
+      encryptionScheme = scheme,
       ciphertextB64 = cipher,
       senderCiphertextB64 = selfCipher,
       signalMsgType = DesktopJson.long(m, "signal_msg_type", 3L).toInt(),
@@ -1277,6 +1291,7 @@ class DesktopChatController(
     "clip" -> "Clip"
     "voice" -> "Voice message"
     "voice_once" -> "View-once voice"
+    "star_gift" -> DesktopStarsCatalog.formatSummaryLine(msg.plainText)
     "call_log", "call_request" -> DesktopCallMetaParser.formatSummaryLine(msg.messageType, msg.plainText)
     else -> msg.plainText
   }

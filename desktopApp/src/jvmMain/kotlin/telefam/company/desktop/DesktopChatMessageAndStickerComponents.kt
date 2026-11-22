@@ -778,6 +778,39 @@ fun DesktopChatMessageBubble(
                   }
                 }
               }
+            } else if (msg.messageType == "star_gift") {
+              val meta = remember(msg.plainText) { DesktopStarsCatalog.parseGiftMeta(msg.plainText) }
+              val starsCount = meta?.stars ?: 5L
+              val tier = DesktopStarsCatalog.animationTier(starsCount)
+              val emblemSize = when (tier) {
+                5 -> 86.dp
+                4 -> 76.dp
+                3 -> 68.dp
+                2 -> 60.dp
+                else -> 52.dp
+              }
+              Column(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+              ) {
+                DesktopAnimated3DStarEmblem(
+                  starsAmount = starsCount,
+                  baseSize = emblemSize,
+                  showTelefamWordmark = true,
+                  isDarkTheme = isDark || isOwn,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                  text = if (isOwn) {
+                    "You sent ${DesktopStarsCatalog.formatCount(starsCount)} Stars"
+                  } else {
+                    "Received ${DesktopStarsCatalog.formatCount(starsCount)} Stars"
+                  },
+                  color = textColor,
+                  fontSize = (13.5 + tier * 0.8).sp,
+                  fontWeight = FontWeight.ExtraBold,
+                )
+              }
             } else {
               DesktopSmartInteractiveText(
                 text = shownText,

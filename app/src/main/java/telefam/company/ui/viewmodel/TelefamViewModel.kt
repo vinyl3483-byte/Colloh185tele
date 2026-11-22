@@ -410,6 +410,7 @@ data class TelefamUiState(
   val profileToastMessage: String? = null,
   val comingSoonMessage: String? = null,
   val showSettingsModal: Boolean = false,
+  val showProfileMenuModal: Boolean = false,
   val settings: SettingsSnapshot = SettingsSnapshot(),
   val syncStatus: OfflineSyncStatusSnapshot = OfflineSyncStatusSnapshot(),
   val isWifiConnected: Boolean = true,
@@ -506,6 +507,7 @@ class TelefamViewModel(
 
   val chatController = ChatFeatureController(viewModelScope, repository, _uiState)
   val callController: TelefamCallController = repository.createCallController()
+  val starsController: telefam.company.stars.TelefamStarsController = repository.createStarsController(viewModelScope)
 
   init {
     viewModelScope.launch {
@@ -1445,6 +1447,7 @@ class TelefamViewModel(
       cur.activeUserProfile != null ||
       cur.profileViewerItems != null ||
       cur.activeSettingsDestination != null ||
+      cur.showProfileMenuModal ||
       cur.activeChatPrivacyRoute != null ||
       cur.showNotificationsSheet ||
       cur.postComposer.isOpen
@@ -2870,6 +2873,7 @@ class TelefamViewModel(
           profileBackStack = emptyList(),
           profileViewerItems = null,
           showSettingsModal = false,
+          showProfileMenuModal = false,
           settingsBackStack = emptyList(),
           feedsState = s.feedsState.copy(
             isSearchOpen = false,
@@ -3130,6 +3134,14 @@ class TelefamViewModel(
         lastCreatedTicket = null,
       )
     }
+  }
+
+  fun openOwnerMenuModal() {
+    _uiState.update { it.copy(showProfileMenuModal = true) }
+  }
+
+  fun dismissOwnerMenuModal() {
+    _uiState.update { it.copy(showProfileMenuModal = false) }
   }
 
   fun navigateToSettings(destination: SettingsDestination) {
@@ -4163,6 +4175,11 @@ class TelefamViewModel(
       }
       "inbox" -> {
         openNotificationsSheet()
+      }
+      "stars" -> {
+        val country = state.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+          ?: state.profileForm.selectedCountry.iso
+        starsController.openStarsHub(country, state.profileForm.location)
       }
       "active_call" -> {
         callController.expandFromMinimized()

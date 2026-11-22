@@ -447,4 +447,97 @@
     <string name="call_low_network_notice">Weak connection · optimizing audio</string>
     <string name="call_peer_away_avatar">Away from screen · audio active</string>
     <string name="call_minimized_return">Tap to return to call</string>
+
+    <!-- Owner Profile Menu -->
+    <string name="profile_menu_title">Menu</string>
+    <string name="profile_menu_dashboard_title">Dashboard</string>
+    <string name="profile_menu_dashboard_sub">View your performance, analytics and insights</string>
+    <string name="profile_menu_stars_title">Stars</string>
+    <string name="profile_menu_stars_sub">Get support from your fans</string>
+    <string name="profile_menu_subscription_title">Subscription</string>
+    <string name="profile_menu_subscription_sub">Manage your subscriptions and exclusive content</string>
+    <string name="profile_menu_monetization_title">Monetization</string>
+    <string name="profile_menu_monetization_sub">Earn from your content and creator programs</string>
+    <string name="profile_menu_wallet_title">Wallet</string>
+    <string name="profile_menu_wallet_sub">View your balance and transaction history</string>
+    <string name="profile_menu_linked_device_title">Linked device</string>
+    <string name="profile_menu_linked_device_sub">Manage your linked devices</string>
+    <string name="profile_menu_create_campaign_title">Create campaign</string>
+    <string name="profile_menu_create_campaign_sub">Collaborate with brands and grow your reach</string>
+    <string name="profile_menu_get_verified_title">Get Verified</string>
+    <string name="profile_menu_get_verified_sub">Apply for a verified badge and build more trust with your audience.</string>
+    <string name="profile_menu_get_verified_cta">Get Verified</string>
+
+    <!-- Telefam Stars & Checkout -->
+    <string name="stars_title">Stars</string>
+    <string name="stars_refresh">Refresh</string>
+    <string name="stars_available_balance">Available Balance</string>
+    <string name="stars_unit_plural">Stars</string>
+    <string name="stars_unit_singular">Star</string>
+    <string name="stars_brand_wordmark">Telefam</string>
+    <string name="stars_buy_button">Buy Stars</string>
+    <string name="stars_received_label">Stars Received</string>
+    <string name="stars_sent_label">Stars Sent</string>
+    <string name="stars_senders_tab">Senders</string>
+    <string name="stars_history_tab">History</string>
+    <string name="stars_no_senders_title">No star senders yet</string>
+    <string name="stars_no_senders_sub">Supporters who send Stars to you will appear here in real time.</string>
+    <string name="stars_no_history_title">No Star activity yet</string>
+    <string name="stars_no_history_sub">Purchases and Stars gifts you send or receive appear here.</string>
+    <string name="stars_send_title">Send Stars</string>
+    <string name="stars_balance_pill">Balance: %1$s</string>
+    <string name="stars_select_to_send">Select stars to send</string>
+    <string name="stars_send_support_sub">Show your support and help them grow!</string>
+    <string name="stars_one_star_badge">1 star = 1 appreciation</string>
+    <string name="stars_send_cta">Send</string>
+    <string name="stars_buy_title">Buy Stars</string>
+    <string name="stars_buy_banner_title">Support your favorite creators and help them grow!</string>
+    <string name="stars_buy_banner_sub">Buy Stars and send them as a gift during live streams, or on their content.</string>
+    <string name="stars_choose_package">Choose a package</string>
+    <string name="stars_popular_badge">Popular</string>
+    <string name="stars_buy_cta">Buy</string>
+    <string name="stars_checkout_title">Checkout</string>
+    <string name="stars_payment_method">Payment Method</string>
+    <string name="stars_paystack_title">Paystack</string>
+    <string name="stars_paystack_sub">Pay securely with M-Pesa, cards and bank transfers</string>
+    <string name="stars_paypal_title">PayPal</string>
+    <string name="stars_paypal_sub">Pay with your PayPal account or card</string>
+    <string name="stars_security_title">Your payment is secure and encrypted</string>
+    <string name="stars_security_sub">We use industry-standard encryption to protect your information.</string>
+    <string name="stars_proceed_to_pay">Proceed to Pay</string>
+    <string name="stars_verifying_payment">Verifying payment…</string>
+    <string name="stars_sent_chat_label">Sent %1$s Stars</string>
+    <string name="stars_received_chat_label">Received %1$s Stars</string>
+
+    <!-- Get Verified Tiers, Pricing, Liveness & Document Verification -->
+    <string name="ver_title">Verification</string>
+    <string name="ver_tier_business_subtitle">Get the Business Badge</string>
+    <string name="ver_tier_gov_subtitle">Get the Government Badge</string>
+    <string name="ver_tier_blue_subtitle">Get the Blue Badge</string>
+    <string name="ver_billed_monthly">Billed monthly</string>
+    <string name="ver_annual">Annual</string>
+    <string name="ver_off_20">20% OFF</string>
+    <string name="ver_per_month">/ month</string>
+    <string name="ver_per_year">/ year</string>
+    <string name="ver_apply_now">Apply Now</string>
+    <string name="ver_subscribe_now">Subscribe Now</string>
+    <string name="ver_cancel_anytime">Cancel anytime. Secure payment.</string>
+    <string name="ver_tutorial_title">Choose your Telefam verification tier</string>
+    <string name="ver_tutorial_sub">Swipe sideways between Business, Government, and Blue verification tiers.</string>
+    <string name="ver_tutorial_got_it">Got it</string>
+    <string name="ver_trial_offer_title">First week free</string>
+    <string name="ver_trial_offer_sub">Unlock 7 days free, then renew monthly or annually with Paystack or PayPal.</string>
+    <string name="ver_activate_trial">Unlock 1-week free trial</string>
+    <string name="ver_how_it_works">How verification works</string>
+    <string name="ver_liveness_title">Live selfie check</string>
+    <string name="ver_liveness_start">Start live selfie</string>
+    <string name="ver_liveness_blocked">Screen recording or mirroring detected. Stop capture to proceed.</string>
+    <string name="ver_doc_select_title">Select ID document</string>
+    <string name="ver_doc_guidance_title">Use a valid, government-issued ID</string>
+    <string name="ver_doc_guidance_sub">The ID must be original, unexpired, and clearly readable.</string>
+    <string name="ver_doc_purge_notice">Your selfie and ID images are encrypted in transit and permanently deleted after verification.</string>
+    <string name="ver_doc_start_scan">Start ID capture</string>
+    <string name="ver_under_review_title">Under review</string>
+    <string name="ver_under_review_sub">Review takes up to 3 working days. You will be notified once complete.</string>
+    <string name="ver_verified_title">Verified</string>
 </resources>

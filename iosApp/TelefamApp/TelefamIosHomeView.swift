@@ -34,6 +34,7 @@ struct TelefamIosHomeView: View {
     @StateObject private var settingsStore: TelefamIosSettingsStore
     @StateObject private var chatStore: TelefamIosChatStore
     @StateObject private var callController: TelefamIosCallController
+    @StateObject private var starsStore: TelefamIosStarsStore
     @Binding var themeMode: TelefamThemeMode
 
     private let serverURL: URL
@@ -86,6 +87,15 @@ struct TelefamIosHomeView: View {
                 userIdProvider: { sessionStore.userId },
                 tokenProvider: { sessionStore.sessionToken },
                 deviceFingerprint: sessionStore.deviceFingerprint
+            )
+        )
+        _starsStore = StateObject(
+            wrappedValue: TelefamIosStarsStore(
+                baseURL: serverURL,
+                userIdProvider: { sessionStore.userId },
+                tokenProvider: { sessionStore.sessionToken },
+                deviceFingerprint: sessionStore.deviceFingerprint,
+                countryHintProvider: { sessionStore.countryIso }
             )
         )
         _themeMode = themeMode
@@ -218,6 +228,14 @@ struct TelefamIosHomeView: View {
                     authDeviceFingerprint: sessionStore.deviceFingerprint
                 )
                 .zIndex(98)
+
+                if let burst = starsStore.celebrationBurst {
+                    TelefamIosStarCelebrationOverlay(
+                        burst: burst,
+                        onDismiss: { starsStore.dismissCelebration() }
+                    )
+                    .zIndex(99)
+                }
             }
             .animation(.easeInOut(duration: 0.2), value: isBottomBarVisible)
             .onChange(of: contactsStore.toastMessage) { msg in
@@ -272,6 +290,7 @@ struct TelefamIosHomeView: View {
             if !authed {
                 callController.detach()
                 chatStore.detach()
+                starsStore.clearOnLogout()
                 smartLinksCoordinator.clearOnLogout()
                 notificationManager.clearOnLogout()
                 sessionStore.stopIncomingLoginRequestPoller()
@@ -382,6 +401,13 @@ struct TelefamIosHomeView: View {
             let cleanUser = sessionStore.username.trimmingCharacters(in: .whitespacesAndNewlines)
             let previewName = cleanFull.isEmpty ? (cleanUser.isEmpty ? "Telefam" : cleanUser) : cleanFull
             TelefamIosChatPrivacyAndThemesView(settingsStore: settingsStore, previewSenderName: previewName)
+                .preferredColorScheme(themeMode.preferredColorScheme)
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { starsStore.route != nil },
+            set: { if !$0 { starsStore.dismissFlow() } }
+        )) {
+            TelefamIosStarsHostView(store: starsStore)
                 .preferredColorScheme(themeMode.preferredColorScheme)
         }
         .telefamSmartOverlayHost(
@@ -553,6 +579,18 @@ struct TelefamIosHomeView: View {
                         peerAvatarUrl: conv.peerAvatarUrl,
                         callType: callType
                     )
+                },
+                onOpenSendStars: { conv in
+                    starsStore.openSendStarsFromChat(
+                        peer: TelefamIosSendStarsPeerContext(
+                            userId: conv.peerUserId,
+                            fullName: conv.peerFullName,
+                            username: conv.peerUsername,
+                            avatarUrl: conv.peerAvatarUrl,
+                            conversationId: conv.conversationId,
+                            isOnline: conv.isOnline
+                        )
+                    )
                 }
             )
         case .contacts:
@@ -606,7 +644,8 @@ struct TelefamIosHomeView: View {
                 onEditOwnerPost: { item in postLaunchTarget = .edit(item: item) },
                 onTapHashtag: { tag, mode in postLaunchTarget = .prefillHashtag(tag: tag, mode: mode) },
                 onTapAudio: { song, mode in postLaunchTarget = .prefillSong(song: song, mode: mode) },
-                onMessageUser: { prof in launchChat(with: prof) }
+                onMessageUser: { prof in launchChat(with: prof) },
+                onOpenStars: { starsStore.openStarsHub() }
             )
         }
     }
@@ -770,6 +809,8 @@ struct TelefamIosHomeView: View {
             activeTab = .feeds
             isBottomBarVisible = true
             Task { await feedStore.refresh() }
+        case .stars:
+            starsStore.openStarsHub()
         case .inbox:
             notificationManager.showInboxSheet = true
         }

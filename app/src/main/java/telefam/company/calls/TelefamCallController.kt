@@ -95,7 +95,6 @@ class TelefamCallController(
 
   fun recommendedQualityForNetwork(tier: NetworkTier): CallQualityTier = when (tier) {
     NetworkTier.GOOD -> CallQualityTier.HD_720P
-    NetworkTier.MODERATE -> CallQualityTier.BALANCED_480P
     NetworkTier.WEAK -> CallQualityTier.LOW_240P
     NetworkTier.OFFLINE -> CallQualityTier.AUDIO_PRIORITY
   }

@@ -1429,6 +1429,92 @@ func (s *Service) AppendSystemCallMessage(convID, senderID, peerID, messageType,
 	return dto, nil
 }
 
+// AppendStarGiftMessage persists a backend-verified animated star gift message in the 1:1 conversation
+// and broadcasts message_new over WebSocket to both participants.
+func (s *Service) AppendStarGiftMessage(convID, senderID, peerID, metaJSON, clientOpID string) (MessageDTO, error) {
+	encoded := base64.StdEncoding.EncodeToString([]byte(metaJSON))
+	now := s.nowMs()
+
+	s.mu.Lock()
+	c, ok := s.conversations[convID]
+	if !ok {
+		s.mu.Unlock()
+		return MessageDTO{}, ErrNotFound
+	}
+	if peerID == "" {
+		if senderID == c.UserA {
+			peerID = c.UserB
+		} else {
+			peerID = c.UserA
+		}
+	}
+	opID := strings.TrimSpace(clientOpID)
+	if opID == "" {
+		opID = newRandomID("starop")
+	}
+	if existing, exists := s.clientOpIndex[opID]; exists {
+		dto := existing.DTO
+		s.mu.Unlock()
+		return dto, nil
+	}
+
+	initialStatus := "sent"
+	if s.isOnlineLocked(peerID) {
+		initialStatus = "delivered"
+	}
+	dto := MessageDTO{
+		MessageID:           newRandomID("msg"),
+		ConversationID:      convID,
+		SenderUserID:        senderID,
+		RecipientUserID:     peerID,
+		ClientOpID:          opID,
+		MessageType:         "star_gift",
+		CompressionCodec:    "none",
+		EncryptionScheme:    "telefam_star_meta_v1",
+		CiphertextB64:       encoded,
+		SenderCiphertextB64: encoded,
+		SignalMsgType:       1,
+		DeliveryStatus:      initialStatus,
+		CreatedAtMs:         now,
+	}
+	rec := &storedMessage{DTO: dto}
+	s.messages[convID] = append(s.messages[convID], rec)
+	s.messageIndex[dto.MessageID] = rec
+	s.clientOpIndex[opID] = rec
+
+	c.LastMessageID = dto.MessageID
+	c.LastMessageType = dto.MessageType
+	c.LastSenderID = senderID
+	c.LastCiphertext = dto.CiphertextB64
+	c.LastSenderCipher = dto.SenderCiphertextB64
+	c.LastEncryptionScheme = dto.EncryptionScheme
+	c.LastSignalMsgType = dto.SignalMsgType
+	c.LastDelivery = dto.DeliveryStatus
+	c.LastMessageAtMs = now
+	c.UpdatedAtMs = now
+
+	if peerID == c.UserA {
+		c.UnreadA++
+		c.ArchivedA = false
+	} else {
+		c.UnreadB++
+		c.ArchivedB = false
+	}
+	s.mu.Unlock()
+
+	for _, uid := range []string{peerID, senderID} {
+		s.pushWSEvent(uid, WebSocketEvent{
+			Event:          "message_new",
+			ConversationID: convID,
+			UserID:         senderID,
+			MessageID:      dto.MessageID,
+			Message:        &dto,
+			TimestampMs:    now,
+		})
+	}
+	return dto, nil
+}
+
 func (s *Service) toConversationDTOLocked(callerID string, c *storedConversation) ConversationDTO {
 	isA := callerID == c.UserA
 	peerID := c.UserB
@@ -1532,7 +1618,7 @@ func (s *Service) toConversationDTOLocked(callerID string, c *storedConversation
 
 func normalizeMsgType(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "sticker", "gif", "clip", "voice", "voice_once", "call_log", "call_request":
+	case "sticker", "gif", "clip", "voice", "voice_once", "call_log", "call_request", "star_gift":
 		return strings.ToLower(strings.TrimSpace(raw))
 	default:
 		return "text"

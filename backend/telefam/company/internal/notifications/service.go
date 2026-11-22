@@ -857,6 +857,105 @@ func (s *Service) NotifyMentions(ctx context.Context, actorUserID string, userna
 	return created
 }
 
+func (s *Service) NotifyStarReceived(ctx context.Context, senderUserID, recipientUserID, convID, messageID string, stars int64) *NotificationDTO {
+	if stars <= 0 || !s.shouldAllowRecord(recipientUserID, senderUserID) {
+		return nil
+	}
+	actor := s.resolveActor(senderUserID)
+	now := s.nowFunc().UTC().UnixMilli()
+	title := actor.FullName
+	if strings.TrimSpace(title) == "" {
+		title = "Telefam"
+	}
+	body := fmt.Sprintf("Sent you %d Telefam Stars", stars)
+	if stars == 1 {
+		body = "Sent you 1 Telefam Star"
+	}
+	dto := NotificationDTO{
+		ID:              newRandomID("ntf"),
+		RecipientUserID: recipientUserID,
+		ActorUserID:     actor.UserID,
+		ActorName:       actor.FullName,
+		ActorUsername:   actor.Username,
+		ActorAvatarURL:  actor.AvatarURL,
+		Kind:            "star_received",
+		Title:           title,
+		Body:            body,
+		ConversationID:  convID,
+		MessageID:       messageID,
+		TargetUserID:    actor.UserID,
+		CreatedAtMs:     now,
+	}
+	s.mu.Lock()
+	s.appendInboxLocked(dto)
+	s.mu.Unlock()
+
+	if s.shouldSendPush(recipientUserID, "star_received", false) {
+		s.dispatchToUser(ctx, recipientUserID, map[string]string{
+			"type":              "star_received",
+			"recipient_user_id": recipientUserID,
+			"notification_id":   dto.ID,
+			"actor_user_id":     actor.UserID,
+			"actor_name":        actor.FullName,
+			"actor_username":    actor.Username,
+			"actor_avatar_url":  actor.AvatarURL,
+			"conversation_id":   convID,
+			"message_id":        messageID,
+			"target_user_id":    actor.UserID,
+			"stars_amount":      strconv.FormatInt(stars, 10),
+			"title":             title,
+			"body":              body,
+			"created_at_ms":     strconv.FormatInt(now, 10),
+		}, title, body, false)
+	}
+	return &dto
+}
+
+func (s *Service) NotifyVerificationUpdate(ctx context.Context, recipientUserID, status, tier, title, body string) *NotificationDTO {
+	if strings.TrimSpace(recipientUserID) == "" {
+		return nil
+	}
+	now := s.nowFunc().UTC().UnixMilli()
+	cleanTitle := strings.TrimSpace(title)
+	if cleanTitle == "" {
+		cleanTitle = "Telefam Verification"
+	}
+	cleanBody := strings.TrimSpace(body)
+	if cleanBody == "" {
+		cleanBody = "Your verification status has been updated."
+	}
+	dto := NotificationDTO{
+		ID:              newRandomID("ntf"),
+		RecipientUserID: recipientUserID,
+		ActorUserID:     "telefam_verification",
+		ActorName:       "Telefam Verification",
+		ActorUsername:   "telefam",
+		Kind:            "verification_update",
+		Title:           cleanTitle,
+		Body:            cleanBody,
+		TargetUserID:    recipientUserID,
+		CreatedAtMs:     now,
+	}
+	s.mu.Lock()
+	s.appendInboxLocked(dto)
+	s.mu.Unlock()
+
+	if s.shouldSendPush(recipientUserID, "verification_update", false) {
+		s.dispatchToUser(ctx, recipientUserID, map[string]string{
+			"type":              "verification_update",
+			"recipient_user_id": recipientUserID,
+			"notification_id":   dto.ID,
+			"status":            status,
+			"tier":              tier,
+			"target_user_id":    recipientUserID,
+			"title":             cleanTitle,
+			"body":              cleanBody,
+			"created_at_ms":     strconv.FormatInt(now, 10),
+		}, cleanTitle, cleanBody, false)
+	}
+	return &dto
+}
+
 func (s *Service) dispatchToUser(ctx context.Context, recipientID string, data map[string]string, title, body string, isViewOnce bool) {
 	tokens := s.ListUserTokens(recipientID)
 	if len(tokens) == 0 {

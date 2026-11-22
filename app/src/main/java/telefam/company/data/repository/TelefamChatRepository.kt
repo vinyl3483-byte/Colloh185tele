@@ -1741,6 +1741,13 @@ class TelefamChatRepository(
     if (cachedMsg != null && cachedMsg.plainText.isNotBlank()) {
       return previewTextForMessage(cachedMsg)
     }
+    if (dto.lastMessageType == "star_gift" || dto.lastEncryptionScheme == "telefam_star_meta_v1") {
+      val b64 = dto.lastCiphertextB64.ifBlank { dto.lastSenderCiphertextB64 }
+      val decoded = decodeCallMetaB64(b64)
+      if (decoded.isNotBlank()) {
+        return telefam.company.stars.TelefamStarsCatalog.formatSummaryLine(decoded)
+      }
+    }
     if (dto.lastMessageType == "call_log" || dto.lastMessageType == "call_request" ||
       dto.lastEncryptionScheme == "telefam_call_meta_v1"
     ) {
@@ -1758,6 +1765,7 @@ class TelefamChatRepository(
       "voice_once" -> "View-once voice message"
       "call_log" -> "Call"
       "call_request" -> "Call me request"
+      "star_gift" -> "Sent Stars"
       else -> {
         val dec = engine?.decryptAndDecompress(
           peerUserId = dto.peerUserId,
@@ -1779,7 +1787,8 @@ class TelefamChatRepository(
     dto: ChatMessageDto,
     cached: ChatMessageEntity?,
   ): String {
-    if (dto.encryptionScheme == "telefam_call_meta_v1" ||
+    if (dto.encryptionScheme == "telefam_star_meta_v1" || dto.messageType == "star_gift" ||
+      dto.encryptionScheme == "telefam_call_meta_v1" ||
       dto.messageType == "call_log" ||
       dto.messageType == "call_request"
     ) {
@@ -1808,6 +1817,7 @@ class TelefamChatRepository(
       "voice_once" -> "View-once voice message"
       "call_log" -> "Call"
       "call_request" -> "Call me request"
+      "star_gift" -> "Sent Stars"
       else -> ""
     }
   }
@@ -1905,6 +1915,7 @@ class TelefamChatRepository(
     "voice" -> "Voice message"
     "voice_once" -> "View-once voice message"
     "call_log", "call_request" -> TelefamCallMetaParser.formatSummaryLine(msg.messageType, msg.plainText)
+    "star_gift" -> telefam.company.stars.TelefamStarsCatalog.formatSummaryLine(msg.plainText)
     else -> msg.plainText.lineSequence().firstOrNull().orEmpty().take(90)
   }
 

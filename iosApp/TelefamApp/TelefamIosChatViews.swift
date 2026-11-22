@@ -428,6 +428,7 @@ struct TelefamIosChatsHostView: View {
     let onOpenPrivacy: () -> Void
     let onBrowseContacts: () -> Void
     var onStartCall: (TelefamIosChatConversation, TelefamIosCallType) -> Void = { _, _ in }
+    var onOpenSendStars: (TelefamIosChatConversation) -> Void = { _ in }
 
     @State private var selectedConvIds: Set<String> = []
     @State private var showArchivedSheet: Bool = false
@@ -460,7 +461,8 @@ struct TelefamIosChatsHostView: View {
                             onBack: { chatStore.closeConversation() },
                             onOpenProfile: { onOpenUserProfile(conv.peerUserId) },
                             onOpenPrivacy: onOpenPrivacy,
-                            onStartCall: { callType in onStartCall(conv, callType) }
+                            onStartCall: { callType in onStartCall(conv, callType) },
+                            onOpenSendStars: { onOpenSendStars(conv) }
                         )
                         .transition(.move(edge: .trailing))
                         .zIndex(5)
@@ -485,7 +487,8 @@ struct TelefamIosChatsHostView: View {
                             onBack: { chatStore.closeConversation() },
                             onOpenProfile: { onOpenUserProfile(conv.peerUserId) },
                             onOpenPrivacy: onOpenPrivacy,
-                            onStartCall: { callType in onStartCall(conv, callType) }
+                            onStartCall: { callType in onStartCall(conv, callType) },
+                            onOpenSendStars: { onOpenSendStars(conv) }
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
@@ -976,6 +979,7 @@ struct TelefamIosOneOnOneChatView: View {
     let onOpenProfile: () -> Void
     let onOpenPrivacy: () -> Void
     var onStartCall: (TelefamIosCallType) -> Void = { _ in }
+    var onOpenSendStars: () -> Void = {}
 
     @State private var draftText: String = ""
     @State private var editingMsg: TelefamIosChatMessage? = nil
@@ -1448,11 +1452,12 @@ struct TelefamIosOneOnOneChatView: View {
 
                         if !hasText {
                             Button {
-                                chatStore.showToast("Gifts — Coming soon")
+                                onOpenSendStars()
                             } label: {
-                                ChatSvgIcon(kind: .gift, color: TelefamPalette.textMuted(colorScheme), size: 20)
+                                ChatSvgIcon(kind: .gift, color: accentColor, size: 20)
                                     .frame(width: 38, height: 40)
                             }
+                            .accessibilityLabel("Send Stars")
                             .disabled(isBlocked)
 
                             Button {
@@ -1720,6 +1725,13 @@ private struct MessageBubbleRow: View {
 
             if msg.messageType == "voice" || msg.messageType == "voice_once" {
                 voiceRowContent
+            } else if msg.messageType == "star_gift" {
+                TelefamIosStarGiftChatBubbleContent(
+                    rawMetaJson: msg.plainText,
+                    isOwn: isOwn,
+                    textColor: textInk,
+                    subColor: subInk
+                )
             } else if msg.messageType == "call_log" || msg.messageType == "call_request" {
                 callMetaCardContent
             } else {

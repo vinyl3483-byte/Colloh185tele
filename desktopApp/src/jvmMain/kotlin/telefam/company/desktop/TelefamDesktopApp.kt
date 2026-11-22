@@ -302,6 +302,8 @@ fun main() = application {
   var incomingLoginError by remember { mutableStateOf<String?>(null) }
   val chatController = remember { DesktopChatController(apiClient) { settingsBundle.notifications.inAppSounds } }
   val callController = remember { DesktopCallController(apiClient, chatController) }
+  val starsController = remember { DesktopStarsController(apiClient, chatController) }
+  val starsState by starsController.state.collectAsState()
   val smartController = remember {
     DesktopSmartActionController(apiClient = apiClient, scope = scope) { toastMessage = it }
   }
@@ -339,6 +341,7 @@ fun main() = application {
     if (session.isAuthenticated) {
       chatController.attachSession(session.userId)
       callController.attachSession(session.userId)
+      starsController.attachSession(session.userId)
       smartController.onAuthenticated()
       val fetched = withContext(Dispatchers.IO) { apiClient.getSettings() }
       settingsBundle = fetched
@@ -1071,6 +1074,7 @@ fun main() = application {
                       },
                       onToggleTheme = toggleTheme,
                       onOpenSettings = { showSettingsScreen = true },
+                      onOpenStars = { starsController.openStarsHub(session.location) },
                       onSignOut = { showSettingsScreen = true },
                       onMessageUser = { targetProf ->
                         chatController.openDirectConversationByUser(
@@ -1105,6 +1109,9 @@ fun main() = application {
                           conversationId = conv.conversationId,
                           callType = callType,
                         )
+                      },
+                      onOpenSendStars = { conv ->
+                        starsController.openSendStarsFromChat(conv, session.location)
                       },
                       onToast = { toastMessage = it },
                     )
@@ -1267,6 +1274,7 @@ fun main() = application {
               },
               onToggleTheme = toggleTheme,
               onOpenSettings = { showSettingsScreen = true },
+              onOpenStars = { starsController.openStarsHub(session.location) },
               onSignOut = {
                 showSettingsScreen = true
               },
@@ -1456,6 +1464,7 @@ fun main() = application {
                 profileViewerState = null
                 callController.detachSession()
                 chatController.detachSession()
+                starsController.detachSession()
                 smartController.onLogout()
                 scope.launch {
                   withContext(Dispatchers.IO) { apiClient.signOut(allDevices) }
@@ -1626,6 +1635,9 @@ fun main() = application {
                   activeTab = "chats"
                   chatController.openConversation(item.conversationId)
                 }
+                item.kind.equals("star_received", ignoreCase = true) -> {
+                  starsController.openStarsHub(session.location)
+                }
                 item.postId.isNotBlank() -> {
                   val post = feedPosts.firstOrNull { it.postId == item.postId }
                   if (post != null) {
@@ -1642,6 +1654,36 @@ fun main() = application {
               }
             },
           )
+        }
+
+        if (starsState.isOpen && session.isAuthenticated && session.profileCompleted) {
+          DesktopStarsHostScreen(
+            controller = starsController,
+            isDark = isDark,
+            onOpenUserProfile = { uid -> openUserProfile(uid) },
+          )
+        }
+
+        val burstStars = starsState.celebrationBurstStars
+        LaunchedEffect(burstStars) {
+          if (burstStars != null) {
+            delay(2_200L)
+            starsController.dismissCelebrationBurst()
+          }
+        }
+        if (burstStars != null) {
+          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Surface(shape = RoundedCornerShape(26.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f), shadowElevation = 12.dp) {
+              Box(modifier = Modifier.padding(horizontal = 30.dp, vertical = 22.dp)) {
+                DesktopAnimated3DStarEmblem(
+                  starsAmount = burstStars,
+                  baseSize = if (burstStars >= 1_000L) 108.dp else 88.dp,
+                  showTelefamWordmark = true,
+                  isDarkTheme = isDark,
+                )
+              }
+            }
+          }
         }
 
         val banner = incomingMsgBanner
@@ -4647,6 +4689,7 @@ private fun DesktopUserProfileScreen(
   onOpenPostAtIndex: (List<DesktopFeedPost>, Int) -> Unit,
   onToggleTheme: () -> Unit,
   onOpenSettings: () -> Unit = {},
+  onOpenStars: () -> Unit = {},
   onSignOut: () -> Unit,
   onMessageUser: (DesktopUserProfile) -> Unit = {},
   onToast: (String) -> Unit,
@@ -4665,6 +4708,7 @@ private fun DesktopUserProfileScreen(
   var showBackgroundsDialog by remember { mutableStateOf(false) }
   var isUploadingBg by remember { mutableStateOf(false) }
   var showEditProfileDialog by remember { mutableStateOf(false) }
+  var showProfileMenu by remember { mutableStateOf(false) }
   var showReportCategories by remember { mutableStateOf(false) }
   var pendingReportReason by remember { mutableStateOf<String?>(null) }
   var reportDetails by remember { mutableStateOf("") }
@@ -4942,7 +4986,7 @@ private fun DesktopUserProfileScreen(
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .background(Color.Black.copy(alpha = 0.42f))
-                                .clickable { onToast("Menu — Coming soon") },
+                                .clickable { showProfileMenu = true },
                               contentAlignment = Alignment.Center,
                             ) {
                               DesktopSvgIcon(DesktopIconKind.THREE_DASHES, Color.White, 18.dp)
@@ -5744,6 +5788,18 @@ private fun DesktopUserProfileScreen(
           },
           onDismiss = { showEditProfileDialog = false },
           onToast = onToast,
+        )
+      }
+
+      if (showProfileMenu) {
+        DesktopProfileMenuScreen(
+          isDark = isDark,
+          onBack = { showProfileMenu = false },
+          onOpenStars = {
+            showProfileMenu = false
+            onOpenStars()
+          },
+          onFeatureComingSoon = { title -> onToast("$title — Coming soon") },
         )
       }
 

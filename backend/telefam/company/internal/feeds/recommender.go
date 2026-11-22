@@ -14,12 +14,13 @@ import (
 )
 
 type AuthorSummary struct {
-	UserID      string `json:"user_id"`
-	Username    string `json:"username"`
-	FullName    string `json:"full_name"`
-	AvatarURL   string `json:"avatar_url,omitempty"`
-	IsFollowing bool   `json:"is_following"`
-	FollowsYou  bool   `json:"follows_you"`
+	UserID       string `json:"user_id"`
+	Username     string `json:"username"`
+	FullName     string `json:"full_name"`
+	AvatarURL    string `json:"avatar_url,omitempty"`
+	VerifiedTier string `json:"verified_tier,omitempty"`
+	IsFollowing  bool   `json:"is_following"`
+	FollowsYou   bool   `json:"follows_you"`
 }
 
 type FeedVideoRendition struct {
@@ -37,6 +38,7 @@ type FeedItem struct {
 	AuthorUsername      string               `json:"author_username"`
 	AuthorFullName      string               `json:"author_full_name"`
 	AuthorAvatarURL     string               `json:"author_avatar_url,omitempty"`
+	AuthorVerifiedTier  string               `json:"author_verified_tier,omitempty"`
 	IsFollowingAuthor   bool                 `json:"is_following_author"`
 	IsOwner             bool                 `json:"is_owner"`
 	Privacy             posts.PostPrivacy    `json:"privacy"`
@@ -951,6 +953,7 @@ func (e *Engine) buildFeedItemLocked(
 		AuthorUsername:      author.Username,
 		AuthorFullName:      author.FullName,
 		AuthorAvatarURL:     author.AvatarURL,
+		AuthorVerifiedTier:  author.VerifiedTier,
 		IsFollowingAuthor:   author.IsFollowing,
 		IsOwner:             p.AuthorUserID == viewerUserID,
 		Privacy:             posts.NormalizePrivacy(string(p.Privacy)),

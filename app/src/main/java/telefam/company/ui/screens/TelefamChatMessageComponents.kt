@@ -100,9 +100,11 @@ import telefam.company.core.SmartTextDetector
 import telefam.company.core.TelefamContactsRules
 import telefam.company.data.local.ChatConversationEntity
 import telefam.company.data.local.ChatMessageEntity
+import telefam.company.stars.TelefamStarsCatalog
 import telefam.company.ui.components.LinkPreviewStack
 import telefam.company.ui.components.LocalSmartTextActions
 import telefam.company.ui.components.SmartInteractiveText
+import telefam.company.ui.components.TelefamAnimated3DStarEmblem
 import telefam.company.ui.theme.TelefamCrimson
 import telefam.company.ui.theme.TelefamPureWhite
 import java.text.SimpleDateFormat
@@ -497,6 +499,71 @@ fun ChatMessageRowItem(
                   if (isOwn) {
                     OutgoingStatusIndicator(msg.deliveryStatus, peerName, peerAvatarUrl)
                   }
+                }
+              }
+            }
+          }
+        }
+
+        "star_gift" -> {
+          val meta = remember(msg.plainText) { TelefamStarsCatalog.parseStarGiftMeta(msg.plainText) }
+          val starsCount = meta?.stars ?: 5L
+          val tier = TelefamStarsCatalog.animationTierForStars(starsCount)
+          val formattedStars = TelefamStarsCatalog.formatStarsCount(starsCount)
+          val incomingBg = if (isDark) Color(0xFF1A1D24).copy(alpha = 0.96f) else TelefamPureWhite.copy(alpha = 0.98f)
+          val borderColor = if (tier >= 4) TelefamCrimson.copy(alpha = 0.65f) else Color(0xFFFFCA28).copy(alpha = 0.55f)
+          val titleColor = if (isOwn) TelefamPureWhite else if (isDark) Color(0xFFF9FAFB) else Color(0xFF141821)
+          val subColor = if (isOwn) TelefamPureWhite.copy(alpha = 0.85f) else if (isDark) Color(0xFFA0A7B4) else Color(0xFF6B7280)
+          val baseEmblemSize = when (tier) {
+            5 -> 84.dp
+            4 -> 76.dp
+            3 -> 68.dp
+            2 -> 60.dp
+            else -> 54.dp
+          }
+          Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = if (isOwn) outgoingStart.copy(alpha = 0.92f) else incomingBg,
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, borderColor),
+            shadowElevation = if (tier >= 3) 4.dp else 1.dp,
+            modifier = Modifier
+              .widthIn(min = 190.dp, max = 276.dp)
+              .combinedClickable(
+                onClick = {},
+                onLongClick = { showMenu = true },
+              )
+              .testTag("chat_star_gift_bubble_${msg.messageId}"),
+          ) {
+            Column(
+              modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+              horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+              TelefamAnimated3DStarEmblem(
+                starsAmount = starsCount,
+                baseSize = baseEmblemSize,
+                showTelefamWordmark = true,
+                isDarkTheme = isDark || isOwn,
+                modifier = Modifier.testTag("chat_star_gift_emblem_${msg.messageId}"),
+              )
+              Spacer(modifier = Modifier.height(6.dp))
+              Text(
+                text = if (isOwn) {
+                  "You sent $formattedStars Stars"
+                } else {
+                  "Received $formattedStars Stars"
+                },
+                fontSize = (14 + tier).coerceAtMost(18).sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = titleColor,
+              )
+              Spacer(modifier = Modifier.height(4.dp))
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+              ) {
+                Text(text = timeLabel, fontSize = 10.5.sp, color = subColor)
+                if (isOwn) {
+                  OutgoingStatusIndicator(msg.deliveryStatus, peerName, peerAvatarUrl)
                 }
               }
             }

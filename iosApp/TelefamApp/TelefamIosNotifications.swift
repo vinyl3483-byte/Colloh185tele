@@ -101,6 +101,7 @@ enum TelefamIosNotificationRoute: Equatable {
     case chat(conversationId: String, peerUserId: String)
     case profile(userId: String)
     case post(postId: String)
+    case stars
     case inbox
 }
 
@@ -450,7 +451,9 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
     func openNotificationItem(_ item: TelefamIosNotificationItem) {
         showInboxSheet = false
         Task { await markNotificationRead(item.id) }
-        if !item.conversationId.isEmpty {
+        if item.kind == "star_received" {
+            pendingRoute = .stars
+        } else if !item.conversationId.isEmpty {
             pendingRoute = .chat(conversationId: item.conversationId, peerUserId: item.actorUserId)
         } else if !item.postId.isEmpty {
             pendingRoute = .post(postId: item.postId)
@@ -582,13 +585,20 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
             cancelConversationNotifications(conversationId: convId)
             return true
 
-        case "follow", "like", "mention":
-            let actorId = (data["actor_user_id"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        case "follow", "like", "mention", "star_received":
+            let actorId = (data["actor_user_id"] ?? data["sender_user_id"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             if actorId == session.userId { return false }
             let notifId = (data["notification_id"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let finalId = notifId.isEmpty ? "push_\(type)_\(actorId)_\(Int(Date().timeIntervalSince1970 * 1000))" : notifId
             let title = (data["title"] ?? data["actor_name"] ?? "Telefam").trimmingCharacters(in: .whitespacesAndNewlines)
-            let defaultBody = type == "follow" ? "Started following you" : (type == "like" ? "Liked your post" : "Mentioned you")
+            let defaultBody: String = {
+                switch type {
+                case "follow": return "Started following you"
+                case "like": return "Liked your post"
+                case "star_received": return "Sent you Telefam Stars"
+                default: return "Mentioned you"
+                }
+            }()
             let body = (data["body"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? defaultBody : (data["body"] ?? defaultBody)
             let postId = (data["post_id"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let convId = (data["conversation_id"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -615,6 +625,13 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
             unreadCount = notifications.filter { !$0.isRead }.count
             saveCachedInbox(userId: session.userId)
 
+            if type == "star_received" {
+                NotificationCenter.default.post(name: .telefamStarsUpdatedWs, object: nil, userInfo: [
+                    "kind": "received",
+                    "delta_stars": Int64(data["stars"] ?? "") ?? 0,
+                    "counterparty_name": data["actor_name"] ?? ""
+                ])
+            }
             if Self.shouldDeliverNotification(settings: notifSettings, kind: type) {
                 scheduleLocalSocialNotification(item: item)
             }
@@ -685,6 +702,7 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
             case "sticker": body = "Sent a sticker"
             case "gif": body = "Sent a GIF"
             case "clip": body = "Sent a clip"
+            case "star_gift": body = TelefamIosStarsCatalog.formatSummaryLine(rawJson: message.plainText)
             default:
                 let clean = message.plainText.trimmingCharacters(in: .whitespacesAndNewlines)
                 body = (clean.isEmpty || clean == "[Encrypted message]") ? "New encrypted message" : clean
@@ -743,7 +761,7 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
         content.body = item.body
         content.sound = .default
         content.categoryIdentifier = Self.categorySocial
-        let route = !item.conversationId.isEmpty ? "chat" : (!item.postId.isEmpty ? "post" : "profile")
+        let route = item.kind == "star_received" ? "stars" : (!item.conversationId.isEmpty ? "chat" : (!item.postId.isEmpty ? "post" : "profile"))
         content.userInfo = [
             "route": route,
             "notification_id": item.id,
@@ -845,7 +863,10 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
                 if !notifId.isEmpty {
                     await markNotificationRead(notifId)
                 }
-                if !convId.isEmpty {
+                let routeHint = userInfo["route"] as? String ?? ""
+                if routeHint == "stars" {
+                    pendingRoute = .stars
+                } else if !convId.isEmpty {
                     pendingRoute = .chat(conversationId: convId, peerUserId: peerId)
                 } else if !postId.isEmpty {
                     pendingRoute = .post(postId: postId)
@@ -1169,6 +1190,7 @@ struct TelefamIosNotificationsSheet: View {
         case "follow": return "person.badge.plus.fill"
         case "like": return "heart.fill"
         case "mention": return "at"
+        case "star_received": return "star.fill"
         default: return "bubble.left.fill"
         }
     }
@@ -1178,6 +1200,7 @@ struct TelefamIosNotificationsSheet: View {
         case "like": return TelefamPalette.crimson
         case "follow": return Color.blue
         case "mention": return Color.orange
+        case "star_received": return Color(red: 0.96, green: 0.62, blue: 0.04)
         default: return Color.teal
         }
     }

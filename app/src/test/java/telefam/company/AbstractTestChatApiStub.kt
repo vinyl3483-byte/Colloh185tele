@@ -10,6 +10,9 @@ import telefam.company.data.network.AppVersionResponseDto
 import telefam.company.data.network.AuditEventDto
 import telefam.company.data.network.AuthSessionResponseDto
 import telefam.company.data.network.BatchConversationActionRequestDto
+import telefam.company.data.network.CallActionResponseDto
+import telefam.company.data.network.CallSignalRequestDto
+import telefam.company.data.network.CallStateResponseDto
 import telefam.company.data.network.ChatConversationsResponseDto
 import telefam.company.data.network.ChatGlobalSearchResponseDto
 import telefam.company.data.network.ChatMessageSingleResponseDto
@@ -40,6 +43,7 @@ import telefam.company.data.network.GenericSuccessDto
 import telefam.company.data.network.GiflyGreetingResponseDto
 import telefam.company.data.network.GiflySearchResponseDto
 import telefam.company.data.network.HashtagsSearchResponseDto
+import telefam.company.data.network.IceConfigResponseDto
 import telefam.company.data.network.LegalDocumentsResponseDto
 import telefam.company.data.network.LinkPreviewResponseDto
 import telefam.company.data.network.LoginApprovalStatusResponseDto
@@ -78,8 +82,17 @@ import telefam.company.data.network.SavedLinksListResponseDto
 import telefam.company.data.network.SecurityFlagResponseDto
 import telefam.company.data.network.SecurityFlagsListResponseDto
 import telefam.company.data.network.SendChatMessageRequestDto
+import telefam.company.data.network.SendStarsRequestDto
+import telefam.company.data.network.SendStarsResponseDto
 import telefam.company.data.network.SettingsBundleResponseDto
 import telefam.company.data.network.SongsSearchResponseDto
+import telefam.company.data.network.StarsCheckoutInitRequestDto
+import telefam.company.data.network.StarsCheckoutInitResponseDto
+import telefam.company.data.network.StarsCheckoutVerifyRequestDto
+import telefam.company.data.network.StarsCheckoutVerifyResponseDto
+import telefam.company.data.network.StarsSummaryResponseDto
+import telefam.company.data.network.StartCallRequestDto
+import telefam.company.data.network.StartCallResponseDto
 import telefam.company.data.network.SupportTicketsResponseDto
 import telefam.company.data.network.SyncBatchRequestDto
 import telefam.company.data.network.SyncBatchResponseDto
@@ -696,4 +709,31 @@ abstract class AbstractTestChatApiStub : TelefamApiService {
     callId: String,
     body: CallSignalRequestDto,
   ): Response<CallActionResponseDto> = Response.success(CallActionResponseDto(success = true))
+
+  override suspend fun getStarsSummary(
+    bearer: String,
+    deviceFingerprint: String,
+    countryIso: String,
+  ): Response<StarsSummaryResponseDto> = Response.success(StarsSummaryResponseDto(success = true))
+
+  override suspend fun initStarsCheckout(
+    bearer: String,
+    deviceFingerprint: String,
+    idempotencyKey: String,
+    body: StarsCheckoutInitRequestDto,
+  ): Response<StarsCheckoutInitResponseDto> = Response.success(StarsCheckoutInitResponseDto(success = true))
+
+  override suspend fun verifyStarsCheckout(
+    bearer: String,
+    deviceFingerprint: String,
+    idempotencyKey: String,
+    body: StarsCheckoutVerifyRequestDto,
+  ): Response<StarsCheckoutVerifyResponseDto> = Response.success(StarsCheckoutVerifyResponseDto(success = true))
+
+  override suspend fun sendStarsInChat(
+    bearer: String,
+    deviceFingerprint: String,
+    idempotencyKey: String,
+    body: SendStarsRequestDto,
+  ): Response<SendStarsResponseDto> = Response.success(SendStarsResponseDto(success = true))
 }

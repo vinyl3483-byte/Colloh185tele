@@ -71,6 +71,15 @@ struct TelefamIosApp: App {
                 }
             }
             .onOpenURL { incomingURL in
+                let lower = incomingURL.absoluteString.lowercased()
+                if lower.contains("stars") || lower.contains("payment-return") {
+                    NotificationCenter.default.post(
+                        name: .telefamStarsPaymentReturnUrl,
+                        object: nil,
+                        userInfo: ["url": incomingURL.absoluteString]
+                    )
+                    return
+                }
                 guard let comps = URLComponents(url: incomingURL, resolvingAgainstBaseURL: false),
                       let token = comps.queryItems?.first(where: { $0.name == "token" })?.value,
                       !token.isEmpty else {

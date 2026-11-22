@@ -151,6 +151,7 @@ object TelefamNotificationManager {
       "chat_message" -> settings.typeMessages
       "follow" -> settings.typeFollowers
       "like", "mention", "comment" -> settings.typeComments
+      "star_received" -> true
       else -> true
     }
   }
@@ -297,6 +298,7 @@ object TelefamNotificationManager {
 
     val route = when {
       conversationId.isNotBlank() -> "chat"
+      kind.equals("star_received", ignoreCase = true) -> "stars"
       postId.isNotBlank() -> "post"
       actorUserId.isNotBlank() -> "profile"
       else -> "inbox"
