@@ -35,6 +35,7 @@ struct TelefamIosHomeView: View {
     @StateObject private var chatStore: TelefamIosChatStore
     @StateObject private var callController: TelefamIosCallController
     @StateObject private var starsStore: TelefamIosStarsStore
+    @StateObject private var verificationStore: TelefamIosVerificationStore
     @Binding var themeMode: TelefamThemeMode
 
     private let serverURL: URL
@@ -91,6 +92,15 @@ struct TelefamIosHomeView: View {
         )
         _starsStore = StateObject(
             wrappedValue: TelefamIosStarsStore(
+                baseURL: serverURL,
+                userIdProvider: { sessionStore.userId },
+                tokenProvider: { sessionStore.sessionToken },
+                deviceFingerprint: sessionStore.deviceFingerprint,
+                countryHintProvider: { sessionStore.countryIso }
+            )
+        )
+        _verificationStore = StateObject(
+            wrappedValue: TelefamIosVerificationStore(
                 baseURL: serverURL,
                 userIdProvider: { sessionStore.userId },
                 tokenProvider: { sessionStore.sessionToken },
@@ -291,6 +301,7 @@ struct TelefamIosHomeView: View {
                 callController.detach()
                 chatStore.detach()
                 starsStore.clearOnLogout()
+                verificationStore.clearOnLogout()
                 smartLinksCoordinator.clearOnLogout()
                 notificationManager.clearOnLogout()
                 sessionStore.stopIncomingLoginRequestPoller()
@@ -378,6 +389,19 @@ struct TelefamIosHomeView: View {
                     },
                     onMessageUser: { prof in
                         launchChat(with: prof)
+                    },
+                    onOpenStars: {
+                        profileBackStack.removeAll()
+                        starsStore.openStarsHub()
+                    },
+                    onOpenGetVerified: { tier in
+                        profileBackStack.removeAll()
+                        verificationStore.openGetVerified(
+                            profileCountryIso: sessionStore.countryIso,
+                            fullName: sessionStore.fullName,
+                            username: sessionStore.username,
+                            initialVerifiedTier: tier
+                        )
                     }
                 )
                 .id(topUserId)
@@ -408,6 +432,10 @@ struct TelefamIosHomeView: View {
             set: { if !$0 { starsStore.dismissFlow() } }
         )) {
             TelefamIosStarsHostView(store: starsStore)
+                .preferredColorScheme(themeMode.preferredColorScheme)
+        }
+        .fullScreenCover(isPresented: $verificationStore.isPresented) {
+            TelefamIosVerificationHostView(store: verificationStore)
                 .preferredColorScheme(themeMode.preferredColorScheme)
         }
         .telefamSmartOverlayHost(
@@ -645,7 +673,15 @@ struct TelefamIosHomeView: View {
                 onTapHashtag: { tag, mode in postLaunchTarget = .prefillHashtag(tag: tag, mode: mode) },
                 onTapAudio: { song, mode in postLaunchTarget = .prefillSong(song: song, mode: mode) },
                 onMessageUser: { prof in launchChat(with: prof) },
-                onOpenStars: { starsStore.openStarsHub() }
+                onOpenStars: { starsStore.openStarsHub() },
+                onOpenGetVerified: { tier in
+                    verificationStore.openGetVerified(
+                        profileCountryIso: sessionStore.countryIso,
+                        fullName: sessionStore.fullName,
+                        username: sessionStore.username,
+                        initialVerifiedTier: tier
+                    )
+                }
             )
         }
     }
@@ -811,6 +847,12 @@ struct TelefamIosHomeView: View {
             Task { await feedStore.refresh() }
         case .stars:
             starsStore.openStarsHub()
+        case .verification:
+            verificationStore.openGetVerified(
+                profileCountryIso: sessionStore.countryIso,
+                fullName: sessionStore.fullName,
+                username: sessionStore.username
+            )
         case .inbox:
             notificationManager.showInboxSheet = true
         }

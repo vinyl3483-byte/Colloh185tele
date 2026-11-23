@@ -123,6 +123,7 @@ import telefam.company.ui.components.LinkPreviewStack
 import telefam.company.ui.components.PostThemeCanvasBox
 import telefam.company.ui.components.SmartInteractiveText
 import telefam.company.ui.components.TelefamSparkleEmblem
+import telefam.company.ui.components.TelefamVerifiedBadgeIcon
 import telefam.company.ui.components.TelefamTricolorSpinner
 import telefam.company.ui.components.postCardTextStyle
 import telefam.company.ui.theme.TelefamCrimson
@@ -1037,19 +1038,29 @@ private fun FeedBottomLeftMetadata(
     }
 
     // Username matching screenshot bold style (tappable to view author profile)
-    Text(
-      text = item.authorUsername.ifBlank { item.authorFullName },
-      color = Color.White,
-      fontSize = 16.sp,
-      fontWeight = FontWeight.Bold,
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis,
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
       modifier = Modifier
         .clip(RoundedCornerShape(6.dp))
         .clickable(onClick = onClickAuthor)
-        .padding(vertical = 2.dp)
-        .testTag("feed_author_username"),
-    )
+        .padding(vertical = 2.dp),
+    ) {
+      Text(
+        text = item.authorUsername.ifBlank { item.authorFullName },
+        color = Color.White,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+          .weight(1f, fill = false)
+          .testTag("feed_author_username"),
+      )
+      if (item.authorVerifiedTier != "none" && item.authorVerifiedTier.isNotBlank()) {
+        Spacer(modifier = Modifier.width(6.dp))
+        TelefamVerifiedBadgeIcon(tier = item.authorVerifiedTier, size = 16.dp, isDarkTheme = true)
+      }
+    }
 
     val captionText = item.caption.ifBlank {
       if (item.mode != PostMode.TEXT) item.textContent else ""

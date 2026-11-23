@@ -28,6 +28,10 @@ import telefam.company.data.network.CreatePostRequestDto
 import telefam.company.data.network.CreatePostResponseDto
 import telefam.company.data.network.DeviceContextTelemetryDto
 import telefam.company.data.network.DeviceContextTelemetryResponseDto
+import telefam.company.data.network.DocumentSessionRequestDto
+import telefam.company.data.network.DocumentSessionResponseDto
+import telefam.company.data.network.DocumentSubmitRequestDto
+import telefam.company.data.network.DocumentSubmitResponseDto
 import telefam.company.data.network.E2eeKeyBundleResponseDto
 import telefam.company.data.network.E2eeKeyBundleUploadDto
 import telefam.company.data.network.EditChatMessageRequestDto
@@ -46,6 +50,10 @@ import telefam.company.data.network.HashtagsSearchResponseDto
 import telefam.company.data.network.IceConfigResponseDto
 import telefam.company.data.network.LegalDocumentsResponseDto
 import telefam.company.data.network.LinkPreviewResponseDto
+import telefam.company.data.network.LivenessSessionRequestDto
+import telefam.company.data.network.LivenessSessionResponseDto
+import telefam.company.data.network.LivenessSubmitRequestDto
+import telefam.company.data.network.LivenessSubmitResponseDto
 import telefam.company.data.network.LoginApprovalStatusResponseDto
 import telefam.company.data.network.LogoutRequestDto
 import telefam.company.data.network.ManualSyncRequestDto
@@ -100,6 +108,7 @@ import telefam.company.data.network.SyncPreferencesDto
 import telefam.company.data.network.SyncSettingsResponseDto
 import telefam.company.data.network.SystemStatusResponseDto
 import telefam.company.data.network.TelefamApiService
+import telefam.company.data.network.TrialActivateRequestDto
 import telefam.company.data.network.UpdateChatThemeRequestDto
 import telefam.company.data.network.UpdatePostRequestDto
 import telefam.company.data.network.UserBlockResponseDto
@@ -109,6 +118,11 @@ import telefam.company.data.network.UserProfileResponseDto
 import telefam.company.data.network.UserReportRequestDto
 import telefam.company.data.network.UserReportResponseDto
 import telefam.company.data.network.UsernameCheckResponseDto
+import telefam.company.data.network.VerificationCheckoutInitRequestDto
+import telefam.company.data.network.VerificationCheckoutInitResponseDto
+import telefam.company.data.network.VerificationCheckoutVerifyRequestDto
+import telefam.company.data.network.VerificationCheckoutVerifyResponseDto
+import telefam.company.data.network.VerificationStatusResponseDto
 import telefam.company.data.network.VerifyLinkDto
 import telefam.company.data.network.VerifyOtpDto
 import telefam.company.data.network.ViewOnceOpenResponseDto
@@ -736,4 +750,55 @@ abstract class AbstractTestChatApiStub : TelefamApiService {
     idempotencyKey: String,
     body: SendStarsRequestDto,
   ): Response<SendStarsResponseDto> = Response.success(SendStarsResponseDto(success = true))
+
+  override suspend fun getVerificationStatus(
+    bearer: String,
+    deviceFingerprint: String,
+    countryIso: String,
+  ): Response<VerificationStatusResponseDto> = Response.success(VerificationStatusResponseDto(success = true))
+
+  override suspend fun activateVerificationTrial(
+    bearer: String,
+    deviceFingerprint: String,
+    idempotencyKey: String,
+    body: TrialActivateRequestDto,
+  ): Response<VerificationStatusResponseDto> = Response.success(VerificationStatusResponseDto(success = true))
+
+  override suspend fun initVerificationCheckout(
+    bearer: String,
+    deviceFingerprint: String,
+    idempotencyKey: String,
+    body: VerificationCheckoutInitRequestDto,
+  ): Response<VerificationCheckoutInitResponseDto> = Response.success(VerificationCheckoutInitResponseDto(success = true))
+
+  override suspend fun verifyVerificationCheckout(
+    bearer: String,
+    deviceFingerprint: String,
+    idempotencyKey: String,
+    body: VerificationCheckoutVerifyRequestDto,
+  ): Response<VerificationCheckoutVerifyResponseDto> = Response.success(VerificationCheckoutVerifyResponseDto(success = true))
+
+  override suspend fun issueLivenessSession(
+    bearer: String,
+    deviceFingerprint: String,
+    body: LivenessSessionRequestDto,
+  ): Response<LivenessSessionResponseDto> = Response.success(LivenessSessionResponseDto(success = true))
+
+  override suspend fun submitLiveness(
+    bearer: String,
+    deviceFingerprint: String,
+    body: LivenessSubmitRequestDto,
+  ): Response<LivenessSubmitResponseDto> = Response.success(LivenessSubmitResponseDto(success = true))
+
+  override suspend fun issueDocumentSession(
+    bearer: String,
+    deviceFingerprint: String,
+    body: DocumentSessionRequestDto,
+  ): Response<DocumentSessionResponseDto> = Response.success(DocumentSessionResponseDto(success = true))
+
+  override suspend fun submitDocument(
+    bearer: String,
+    deviceFingerprint: String,
+    body: DocumentSubmitRequestDto,
+  ): Response<DocumentSubmitResponseDto> = Response.success(DocumentSubmitResponseDto(success = true))
 }

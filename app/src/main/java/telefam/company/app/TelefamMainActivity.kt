@@ -91,6 +91,7 @@ import telefam.company.ui.screens.TelefamSearchScreen
 import telefam.company.ui.screens.TelefamSettingsScreen
 import telefam.company.ui.screens.TelefamStarsHostScreen
 import telefam.company.ui.screens.TelefamUserProfileScreen
+import telefam.company.ui.screens.TelefamVerificationHostScreen
 import telefam.company.ui.components.TelefamAnimated3DStarEmblem
 import telefam.company.stars.TelefamStarsCatalog
 import telefam.company.ui.theme.TelefamTheme
@@ -129,6 +130,8 @@ class TelefamMainActivity : ComponentActivity() {
       val uiState by viewModel.uiState.collectAsStateWithLifecycle()
       val callUiState by viewModel.callController.uiState.collectAsStateWithLifecycle()
       val starsState by viewModel.starsController.state.collectAsStateWithLifecycle()
+      val verificationState by viewModel.verificationController.state.collectAsStateWithLifecycle()
+      val subscriptionsState by viewModel.subscriptionsController.state.collectAsStateWithLifecycle()
       val systemDark = isSystemInDarkTheme()
       val useDarkBars = when (uiState.themeMode) {
         ThemeMode.SYSTEM -> systemDark
@@ -159,6 +162,10 @@ class TelefamMainActivity : ComponentActivity() {
         uiState.inAppBrowserState != null,
         starsState.isOpen,
         starsState.currentRoute,
+        verificationState.isOpen,
+        verificationState.currentRoute,
+        subscriptionsState.isOpen,
+        subscriptionsState.currentRoute,
         callUiState.isSessionVisible && !callUiState.isMinimizedToChat,
       ) {
         val isApprovalOverlayVisible =
@@ -168,7 +175,7 @@ class TelefamMainActivity : ComponentActivity() {
         val isFullCallVisible = callUiState.isSessionVisible && !callUiState.isMinimizedToChat
         val statusBarIsDark = when {
           isFullCallVisible || isApprovalOverlayVisible || isWaitScreenVisible -> true
-          route == AppRootRoute.HOME && starsState.isOpen -> true
+          route == AppRootRoute.HOME && (starsState.isOpen || verificationState.isOpen || subscriptionsState.isOpen) -> true
           route == AppRootRoute.HOME && uiState.inAppBrowserState != null -> useDarkBars
           uiState.postComposer.isOpen -> true
           route == AppRootRoute.HOME && uiState.showNotificationsSheet -> true
@@ -229,7 +236,8 @@ class TelefamMainActivity : ComponentActivity() {
 
       val activeChatConv = uiState.chatState.activeConversation
       val shouldBlockScreenshots = route == AppRootRoute.HOME && (
-        uiState.chatState.activeViewOnceOverlay != null ||
+        verificationState.requiresSecureFlag ||
+          uiState.chatState.activeViewOnceOverlay != null ||
           (activeChatConv != null && (uiState.chatPrivacy.blocksScreenshots || !activeChatConv.canScreenshot)) ||
           (uiState.chatPrivacy.blocksScreenshots && (uiState.activeHomeTab == HomeTab.CHATS || uiState.activeChatPrivacyRoute != null))
         )
@@ -479,6 +487,15 @@ class TelefamMainActivity : ComponentActivity() {
                   onOpenProfileBackgrounds = viewModel::openOwnerBackgroundsModal,
                   onOpenProfileSettings = viewModel::openOwnerSettingsModal,
                   onMenuClick = viewModel::openOwnerMenuModal,
+                  onOwnerSubscribersClick = {
+                    val country = uiState.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+                      ?: uiState.profileForm.selectedCountry.iso
+                    viewModel.subscriptionsController.openHub(
+                      initialTab = telefam.company.subscriptions.SubscriptionsHubTab.SUBSCRIBERS,
+                      profileCountryIso = country,
+                      locationHint = uiState.profileForm.location,
+                    )
+                  },
                   onSelectProfileFilter = viewModel::selectProfilePostFilter,
                   onSelectProfileSort = viewModel::selectProfileSortOrder,
                   onOpenProfilePostViewer = viewModel::openProfilePostViewer,
@@ -792,7 +809,30 @@ class TelefamMainActivity : ComponentActivity() {
                     peerAvatarUrl = activeProfile.avatarUrl.orEmpty(),
                   )
                 },
-                onSubscribeClick = { viewModel.showProfileToast("Subscribe — Coming soon") },
+                onSubscribeClick = {
+                  val country = uiState.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+                    ?: uiState.profileForm.selectedCountry.iso
+                  viewModel.subscriptionsController.openCreatorSubscribe(
+                    creatorUserId = activeProfile.userId,
+                    creatorName = activeProfile.fullName,
+                    creatorUsername = activeProfile.username,
+                    creatorAvatarUrl = activeProfile.avatarUrl.orEmpty(),
+                    creatorVerifiedTier = activeProfile.verifiedTier,
+                    viewerCountryIso = country,
+                    locationHint = uiState.profileForm.location,
+                  )
+                },
+                onOwnerSubscribersClick = if (activeProfile.isOwner) {
+                  {
+                    val country = uiState.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+                      ?: uiState.profileForm.selectedCountry.iso
+                    viewModel.subscriptionsController.openHub(
+                      initialTab = telefam.company.subscriptions.SubscriptionsHubTab.SUBSCRIBERS,
+                      profileCountryIso = country,
+                      locationHint = uiState.profileForm.location,
+                    )
+                  }
+                } else null,
                 onOpenConnections = { isFollowers -> viewModel.openProfileConnections(activeProfile.userId, isFollowers) },
                 onDismissConnections = { viewModel.dismissProfileConnections(activeProfile.userId) },
                 onLoadMoreConnections = { viewModel.loadMoreProfileConnections(activeProfile.userId) },
@@ -991,6 +1031,29 @@ class TelefamMainActivity : ComponentActivity() {
                   ?: uiState.profileForm.selectedCountry.iso
                 viewModel.starsController.openStarsHub(country, uiState.profileForm.location)
               },
+              onOpenSubscriptions = {
+                viewModel.dismissOwnerMenuModal()
+                val country = uiState.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+                  ?: uiState.profileForm.selectedCountry.iso
+                viewModel.subscriptionsController.openHub(
+                  initialTab = telefam.company.subscriptions.SubscriptionsHubTab.ACTIVE_PLANS,
+                  profileCountryIso = country,
+                  locationHint = uiState.profileForm.location,
+                )
+              },
+              onOpenGetVerified = {
+                viewModel.dismissOwnerMenuModal()
+                val country = uiState.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+                  ?: uiState.profileForm.selectedCountry.iso
+                viewModel.verificationController.openGetVerified(
+                  profileCountryIso = country,
+                  locationHint = uiState.profileForm.location,
+                  fullName = uiState.ownProfileState?.fullName ?: uiState.profileForm.fullName,
+                  username = uiState.ownProfileState?.username ?: uiState.profileForm.username,
+                  avatarUrl = uiState.ownProfileState?.avatarUrl.orEmpty(),
+                  initialVerifiedTier = uiState.ownProfileState?.verifiedTier ?: "none",
+                )
+              },
               onFeatureComingSoon = { label ->
                 viewModel.triggerComingSoon(label, "profile_menu_${label.lowercase().replace(' ', '_')}")
               },
@@ -1019,6 +1082,67 @@ class TelefamMainActivity : ComponentActivity() {
                 viewModel.openUserProfile(peerUid)
               },
               onDismissToast = viewModel.starsController::dismissStatusMessage,
+            )
+          }
+
+          AnimatedVisibility(
+            visible = route == AppRootRoute.HOME && verificationState.isOpen,
+            enter = slideInVertically(initialOffsetY = { it / 6 }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it / 6 }) + fadeOut(),
+          ) {
+            TelefamVerificationHostScreen(
+              state = verificationState,
+              onBack = viewModel.verificationController::navigateBack,
+              onDismissTutorial = viewModel.verificationController::dismissFirstOpenTutorial,
+              onReopenTutorial = viewModel.verificationController::reopenTutorial,
+              onSelectTier = viewModel.verificationController::selectTier,
+              onToggleBillingCycle = viewModel.verificationController::toggleBillingCycle,
+              onApplyTier = viewModel.verificationController::openApplyOrSubscribe,
+              onActivateFreeTrial = viewModel.verificationController::activateFreeTrial,
+              onSelectProvider = viewModel.verificationController::selectPaymentProvider,
+              onProceedToSubscribePay = viewModel.verificationController::proceedToSubscribePayment,
+              onCloseCheckoutWebView = viewModel.verificationController::dismissCheckoutWebView,
+              onPaymentReturnCaptured = viewModel.verificationController::handlePaymentReturnDeepLink,
+              onProceedFromSelfieGuidance = viewModel.verificationController::proceedFromSelfieGuidanceToLiveCamera,
+              onLiveSelfieProgress = viewModel.verificationController::updateLiveSelfieProgress,
+              onSubmitLiveSelfie = viewModel.verificationController::submitAutoCapturedLiveness,
+              onSelectDocType = viewModel.verificationController::selectDocumentType,
+              onStartLiveIdCapture = viewModel.verificationController::startLiveIdCapture,
+              onLiveDocReadiness = viewModel.verificationController::updateLiveDocumentReadiness,
+              onSubmitLiveDocument = viewModel.verificationController::submitAutoCapturedDocument,
+              onRefreshStatus = { viewModel.verificationController.refreshStatus(silent = false) },
+              onOpenTiersExplorer = viewModel.verificationController::openTiersExplorer,
+              onDismissBanner = viewModel.verificationController::dismissStatusMessage,
+            )
+          }
+
+          AnimatedVisibility(
+            visible = route == AppRootRoute.HOME && subscriptionsState.isOpen,
+            enter = slideInVertically(initialOffsetY = { it / 6 }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it / 6 }) + fadeOut(),
+          ) {
+            TelefamSubscriptionsHostScreen(
+              state = subscriptionsState,
+              onBack = viewModel.subscriptionsController::navigateBack,
+              onRefresh = { viewModel.subscriptionsController.refreshHub(silent = false) },
+              onSelectHubTab = viewModel.subscriptionsController::selectHubTab,
+              onUpdatePlanEnabled = viewModel.subscriptionsController::updateDraftEnabled,
+              onUpdateDraftMonthlyCents = viewModel.subscriptionsController::updateDraftMonthlyPriceCents,
+              onUpdateDraftGoalCents = viewModel.subscriptionsController::updateDraftGoalUsdCents,
+              onUpdateDraftPerks = viewModel.subscriptionsController::updateDraftPerksSummary,
+              onSavePlan = viewModel.subscriptionsController::saveCreatorPlan,
+              onSelectBillingCycle = viewModel.subscriptionsController::selectBillingCycle,
+              onSelectProvider = viewModel.subscriptionsController::selectPaymentProvider,
+              onProceedToSubscribePay = viewModel.subscriptionsController::proceedToSubscribePayment,
+              onCancelSubscription = viewModel.subscriptionsController::cancelSubscription,
+              onRenewSubscription = viewModel.subscriptionsController::renewSubscription,
+              onCloseCheckoutWebView = viewModel.subscriptionsController::dismissCheckoutWebView,
+              onPaymentReturnCaptured = viewModel.subscriptionsController::handlePaymentReturnDeepLink,
+              onOpenUserProfile = { targetUid ->
+                viewModel.subscriptionsController.closeAll()
+                viewModel.openUserProfile(targetUid)
+              },
+              onDismissBanner = viewModel.subscriptionsController::dismissStatusMessage,
             )
           }
 
@@ -1305,6 +1429,24 @@ class TelefamMainActivity : ComponentActivity() {
     val data: Uri? = intent.data
     if (data?.scheme == "telefam" && data.host == "stars") {
       viewModel.starsController.handlePaymentReturnDeepLink(
+        paymentId = data.getQueryParameter("payment_id").orEmpty(),
+        reference = data.getQueryParameter("reference").orEmpty().ifBlank { data.getQueryParameter("trxref").orEmpty() },
+        paypalOrderId = data.getQueryParameter("paypal_order_id").orEmpty().ifBlank { data.getQueryParameter("token").orEmpty() },
+        status = data.getQueryParameter("status").orEmpty(),
+      )
+      return
+    }
+    if (data?.scheme == "telefam" && data.host == "verification") {
+      viewModel.verificationController.handlePaymentReturnDeepLink(
+        paymentId = data.getQueryParameter("payment_id").orEmpty(),
+        reference = data.getQueryParameter("reference").orEmpty().ifBlank { data.getQueryParameter("trxref").orEmpty() },
+        paypalOrderId = data.getQueryParameter("paypal_order_id").orEmpty().ifBlank { data.getQueryParameter("token").orEmpty() },
+        status = data.getQueryParameter("status").orEmpty(),
+      )
+      return
+    }
+    if (data?.scheme == "telefam" && data.host == "subscriptions") {
+      viewModel.subscriptionsController.handlePaymentReturnDeepLink(
         paymentId = data.getQueryParameter("payment_id").orEmpty(),
         reference = data.getQueryParameter("reference").orEmpty().ifBlank { data.getQueryParameter("trxref").orEmpty() },
         paypalOrderId = data.getQueryParameter("paypal_order_id").orEmpty().ifBlank { data.getQueryParameter("token").orEmpty() },

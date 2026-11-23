@@ -102,6 +102,7 @@ enum TelefamIosNotificationRoute: Equatable {
     case profile(userId: String)
     case post(postId: String)
     case stars
+    case verification
     case inbox
 }
 
@@ -453,6 +454,8 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
         Task { await markNotificationRead(item.id) }
         if item.kind == "star_received" {
             pendingRoute = .stars
+        } else if item.kind == "verification_update" {
+            pendingRoute = .verification
         } else if !item.conversationId.isEmpty {
             pendingRoute = .chat(conversationId: item.conversationId, peerUserId: item.actorUserId)
         } else if !item.postId.isEmpty {
@@ -585,9 +588,9 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
             cancelConversationNotifications(conversationId: convId)
             return true
 
-        case "follow", "like", "mention", "star_received":
+        case "follow", "like", "mention", "star_received", "verification_update":
             let actorId = (data["actor_user_id"] ?? data["sender_user_id"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if actorId == session.userId { return false }
+            if type != "verification_update" && actorId == session.userId { return false }
             let notifId = (data["notification_id"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let finalId = notifId.isEmpty ? "push_\(type)_\(actorId)_\(Int(Date().timeIntervalSince1970 * 1000))" : notifId
             let title = (data["title"] ?? data["actor_name"] ?? "Telefam").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -596,6 +599,7 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
                 case "follow": return "Started following you"
                 case "like": return "Liked your post"
                 case "star_received": return "Sent you Telefam Stars"
+                case "verification_update": return "Your Telefam verification status was updated"
                 default: return "Mentioned you"
                 }
             }()
@@ -630,6 +634,11 @@ final class TelefamIosNotificationManager: NSObject, ObservableObject, UNUserNot
                     "kind": "received",
                     "delta_stars": Int64(data["stars"] ?? "") ?? 0,
                     "counterparty_name": data["actor_name"] ?? ""
+                ])
+            } else if type == "verification_update" {
+                NotificationCenter.default.post(name: .telefamVerificationUpdatedWs, object: nil, userInfo: [
+                    "verified_tier": data["verified_tier"] ?? "",
+                    "review_status": data["review_status"] ?? ""
                 ])
             }
             if Self.shouldDeliverNotification(settings: notifSettings, kind: type) {
@@ -1191,6 +1200,7 @@ struct TelefamIosNotificationsSheet: View {
         case "like": return "heart.fill"
         case "mention": return "at"
         case "star_received": return "star.fill"
+        case "verification_update": return "checkmark.seal.fill"
         default: return "bubble.left.fill"
         }
     }
@@ -1201,6 +1211,7 @@ struct TelefamIosNotificationsSheet: View {
         case "follow": return Color.blue
         case "mention": return Color.orange
         case "star_received": return Color(red: 0.96, green: 0.62, blue: 0.04)
+        case "verification_update": return Color(red: 0.11, green: 0.61, blue: 0.94)
         default: return Color.teal
         }
     }

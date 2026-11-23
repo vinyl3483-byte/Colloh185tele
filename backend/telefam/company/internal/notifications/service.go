@@ -956,6 +956,67 @@ func (s *Service) NotifyVerificationUpdate(ctx context.Context, recipientUserID,
 	return &dto
 }
 
+func (s *Service) NotifySubscriptionEvent(
+	ctx context.Context,
+	recipientUserID string,
+	actor ActorInfo,
+	kind string,
+	title string,
+	body string,
+	billingCycle string,
+) *NotificationDTO {
+	if strings.TrimSpace(recipientUserID) == "" {
+		return nil
+	}
+	cleanKind := strings.TrimSpace(kind)
+	if cleanKind != "new_subscriber" && cleanKind != "subscription_update" {
+		cleanKind = "subscription_update"
+	}
+	now := s.nowFunc().UTC().UnixMilli()
+	cleanTitle := strings.TrimSpace(title)
+	if cleanTitle == "" {
+		cleanTitle = "Telefam Subscriptions"
+	}
+	cleanBody := strings.TrimSpace(body)
+	if cleanBody == "" {
+		cleanBody = "Your subscription status was updated."
+	}
+	dto := NotificationDTO{
+		ID:              newRandomID("ntf"),
+		RecipientUserID: recipientUserID,
+		ActorUserID:     actor.UserID,
+		ActorName:       actor.FullName,
+		ActorUsername:   actor.Username,
+		ActorAvatarURL:  actor.AvatarURL,
+		Kind:            cleanKind,
+		Title:           cleanTitle,
+		Body:            cleanBody,
+		TargetUserID:    actor.UserID,
+		CreatedAtMs:     now,
+	}
+	s.mu.Lock()
+	s.appendInboxLocked(dto)
+	s.mu.Unlock()
+
+	if s.shouldSendPush(recipientUserID, cleanKind, false) {
+		s.dispatchToUser(ctx, recipientUserID, map[string]string{
+			"type":              cleanKind,
+			"recipient_user_id": recipientUserID,
+			"notification_id":   dto.ID,
+			"actor_user_id":     actor.UserID,
+			"actor_name":        actor.FullName,
+			"actor_username":    actor.Username,
+			"actor_avatar_url":  actor.AvatarURL,
+			"target_user_id":    actor.UserID,
+			"billing_cycle":     billingCycle,
+			"title":             cleanTitle,
+			"body":              cleanBody,
+			"created_at_ms":     strconv.FormatInt(now, 10),
+		}, cleanTitle, cleanBody, false)
+	}
+	return &dto
+}
+
 func (s *Service) dispatchToUser(ctx context.Context, recipientID string, data map[string]string, title, body string, isViewOnce bool) {
 	tokens := s.ListUserTokens(recipientID)
 	if len(tokens) == 0 {

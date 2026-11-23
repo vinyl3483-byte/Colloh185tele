@@ -101,13 +101,14 @@ struct TelefamIosUserProfile: Codable, Equatable {
     var savedPosts: [TelefamIosFeedItem]
     var repostedPosts: [TelefamIosFeedItem]
     var lockedPosts: [TelefamIosFeedItem]
+    var verifiedTier: String = "none"
 
     enum CodingKeys: String, CodingKey {
         case userId, fullName, username, avatarUrl, bio, location, countryIso, gender, dateOfBirth, phoneNumber
         case usernameChangedAtMs, nextUsernameChangeMs, backgroundUrls, backgrounds
         case followingCount, followersCount, likesCount, isFollowing, followsYou, isOwner, isBlocked
         case isMuted, isPrivateRestricted, whoCanComment, whoCanMention, likesVisibility, followingVisibility, showActivityStatus
-        case riskScore, posts, savedPosts, repostedPosts, lockedPosts
+        case riskScore, posts, savedPosts, repostedPosts, lockedPosts, verifiedTier
     }
 
     init(
@@ -143,7 +144,8 @@ struct TelefamIosUserProfile: Codable, Equatable {
         posts: [TelefamIosFeedItem],
         savedPosts: [TelefamIosFeedItem],
         repostedPosts: [TelefamIosFeedItem],
-        lockedPosts: [TelefamIosFeedItem]
+        lockedPosts: [TelefamIosFeedItem],
+        verifiedTier: String = "none"
     ) {
         self.userId = userId
         self.fullName = fullName
@@ -178,6 +180,7 @@ struct TelefamIosUserProfile: Codable, Equatable {
         self.savedPosts = savedPosts
         self.repostedPosts = repostedPosts
         self.lockedPosts = lockedPosts
+        self.verifiedTier = verifiedTier
     }
 
     init(from decoder: Decoder) throws {
@@ -215,6 +218,7 @@ struct TelefamIosUserProfile: Codable, Equatable {
         savedPosts = try c.decodeIfPresent([TelefamIosFeedItem].self, forKey: .savedPosts) ?? []
         repostedPosts = try c.decodeIfPresent([TelefamIosFeedItem].self, forKey: .repostedPosts) ?? []
         lockedPosts = try c.decodeIfPresent([TelefamIosFeedItem].self, forKey: .lockedPosts) ?? []
+        verifiedTier = try c.decodeIfPresent(String.self, forKey: .verifiedTier) ?? "none"
     }
 
     var relationship: TelefamRelationshipState {
@@ -247,7 +251,8 @@ struct TelefamIosUserProfile: Codable, Equatable {
             lhs.posts.count == rhs.posts.count &&
             lhs.savedPosts.count == rhs.savedPosts.count &&
             lhs.repostedPosts.count == rhs.repostedPosts.count &&
-            lhs.lockedPosts.count == rhs.lockedPosts.count
+            lhs.lockedPosts.count == rhs.lockedPosts.count &&
+            lhs.verifiedTier == rhs.verifiedTier
     }
 
     func posts(for ownerTab: TelefamIosOwnerProfileTab) -> [TelefamIosFeedItem] {
@@ -326,6 +331,7 @@ private struct UserProfileAPIResponse: Codable {
     let savedPosts: [TelefamIosFeedItem]?
     let repostedPosts: [TelefamIosFeedItem]?
     let lockedPosts: [TelefamIosFeedItem]?
+    let verifiedTier: String?
 
     enum CodingKeys: String, CodingKey {
         case success
@@ -362,6 +368,7 @@ private struct UserProfileAPIResponse: Codable {
         case savedPosts = "saved_posts"
         case repostedPosts = "reposted_posts"
         case lockedPosts = "locked_posts"
+        case verifiedTier = "verified_tier"
     }
 }
 
@@ -562,7 +569,8 @@ final class TelefamIosProfileStore: ObservableObject {
                 posts: decoded.posts ?? [],
                 savedPosts: decoded.savedPosts ?? [],
                 repostedPosts: decoded.repostedPosts ?? [],
-                lockedPosts: decoded.lockedPosts ?? []
+                lockedPosts: decoded.lockedPosts ?? [],
+                verifiedTier: decoded.verifiedTier ?? profile.verifiedTier
             )
             persistProfileCache()
         } else if let cached = Self.loadCachedProfile(userId: targetId) {
@@ -844,6 +852,7 @@ struct TelefamIosProfileView: View {
     var onTapAudio: (TelefamIosSongTrack, TelefamIosPostMode) -> Void
     var onMessageUser: ((TelefamIosUserProfile) -> Void)? = nil
     var onOpenStars: (() -> Void)? = nil
+    var onOpenGetVerified: ((String) -> Void)? = nil
 
     @EnvironmentObject private var smartLinksCoordinator: TelefamIosSmartLinksCoordinator
     @State private var activeOwnerTab: TelefamIosOwnerProfileTab = .posts
@@ -879,7 +888,8 @@ struct TelefamIosProfileView: View {
         onTapHashtag: @escaping (String, TelefamIosPostMode) -> Void,
         onTapAudio: @escaping (TelefamIosSongTrack, TelefamIosPostMode) -> Void,
         onMessageUser: ((TelefamIosUserProfile) -> Void)? = nil,
-        onOpenStars: (() -> Void)? = nil
+        onOpenStars: (() -> Void)? = nil,
+        onOpenGetVerified: ((String) -> Void)? = nil
     ) {
         self.isEmbeddedOwnProfileTab = isEmbeddedOwnProfileTab
         self.bottomChromePadding = bottomChromePadding
@@ -895,6 +905,7 @@ struct TelefamIosProfileView: View {
         self.onTapAudio = onTapAudio
         self.onMessageUser = onMessageUser
         self.onOpenStars = onOpenStars
+        self.onOpenGetVerified = onOpenGetVerified
         _profileStore = StateObject(
             wrappedValue: TelefamIosProfileStore(
                 targetUserId: targetUserId,
@@ -1234,6 +1245,10 @@ struct TelefamIosProfileView: View {
                     showMenuSheet = false
                     onOpenStars?()
                 },
+                onOpenGetVerified: {
+                    showMenuSheet = false
+                    onOpenGetVerified?(profileStore.profile.verifiedTier)
+                },
                 onFeatureComingSoon: { featureTitle in
                     profileStore.showToast("\(featureTitle) — Coming soon")
                 }
@@ -1328,10 +1343,13 @@ struct TelefamIosProfileView: View {
 
             Spacer()
 
-            Text(profile.fullName.isEmpty ? "@\(profile.username.isEmpty ? profile.userId : profile.username)" : profile.fullName)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(TelefamPalette.textPrimary(colorScheme))
-                .lineLimit(1)
+            HStack(spacing: 5) {
+                Text(profile.fullName.isEmpty ? "@\(profile.username.isEmpty ? profile.userId : profile.username)" : profile.fullName)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(TelefamPalette.textPrimary(colorScheme))
+                    .lineLimit(1)
+                TelefamIosVerifiedBadgeView(tier: profile.verifiedTier, size: 17)
+            }
 
             Spacer()
 
@@ -1448,11 +1466,14 @@ struct TelefamIosProfileView: View {
                                     Spacer().frame(width: 8, height: 40)
                                 }
 
-                                Text(profile.fullName.isEmpty ? "@\(profile.username.isEmpty ? profile.userId : profile.username)" : profile.fullName)
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
-                                    .lineLimit(1)
+                                HStack(spacing: 5) {
+                                    Text(profile.fullName.isEmpty ? "@\(profile.username.isEmpty ? profile.userId : profile.username)" : profile.fullName)
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
+                                        .lineLimit(1)
+                                    TelefamIosVerifiedBadgeView(tier: profile.verifiedTier, size: 17)
+                                }
 
                                 Spacer()
 
@@ -3088,6 +3109,7 @@ private enum TelefamIosProfileMenuKind: String, CaseIterable, Identifiable {
 
 private struct TelefamIosProfileMenuView: View {
     let onOpenStars: () -> Void
+    let onOpenGetVerified: () -> Void
     let onFeatureComingSoon: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -3133,6 +3155,9 @@ private struct TelefamIosProfileMenuView: View {
                                 if item == .stars {
                                     dismiss()
                                     onOpenStars()
+                                } else if item == .getVerified {
+                                    dismiss()
+                                    onOpenGetVerified()
                                 } else {
                                     triggerComingSoon(item.title)
                                 }

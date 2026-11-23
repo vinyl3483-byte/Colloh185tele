@@ -1444,6 +1444,8 @@ final class TelefamIosChatStore: ObservableObject {
             }
         case "stars.updated":
             NotificationCenter.default.post(name: .telefamStarsUpdatedWs, object: nil, userInfo: obj)
+        case "verification.updated":
+            NotificationCenter.default.post(name: .telefamVerificationUpdatedWs, object: nil, userInfo: obj)
         default: break
         }
     }

@@ -191,6 +191,7 @@ data class FeedUiItem(
   val authorUsername: String,
   val authorFullName: String,
   val authorAvatarUrl: String?,
+  val authorVerifiedTier: String = "none",
   val isFollowingAuthor: Boolean,
   val isOwner: Boolean,
   val privacy: PostPrivacy = PostPrivacy.PUBLIC,
@@ -230,6 +231,7 @@ data class UserProfileScreenState(
   val fullName: String = "",
   val username: String = "",
   val avatarUrl: String? = null,
+  val verifiedTier: String = "none",
   val bio: String = "",
   val location: String = "",
   val countryIso: String = "",
@@ -508,6 +510,8 @@ class TelefamViewModel(
   val chatController = ChatFeatureController(viewModelScope, repository, _uiState)
   val callController: TelefamCallController = repository.createCallController()
   val starsController: telefam.company.stars.TelefamStarsController = repository.createStarsController(viewModelScope)
+  val verificationController: telefam.company.verification.TelefamVerificationController = repository.createVerificationController(viewModelScope)
+  val subscriptionsController: telefam.company.subscriptions.TelefamSubscriptionsController = repository.createSubscriptionsController(viewModelScope)
 
   init {
     viewModelScope.launch {
@@ -1975,6 +1979,7 @@ class TelefamViewModel(
       authorAvatarUrl = entity.authorAvatarUrl?.trim()?.takeIf { it.isNotBlank() }?.let {
         AdaptiveStreamSelector.resolveMediaUrl(baseUrl, it)
       },
+      authorVerifiedTier = entity.authorVerifiedTier,
       isFollowingAuthor = entity.isFollowingAuthor,
       isOwner = entity.isOwner,
       privacy = PostPrivacy.fromApi(entity.privacy),
@@ -2063,6 +2068,7 @@ class TelefamViewModel(
           authorUsername = dto.username,
           authorFullName = dto.fullName,
           authorAvatarUrl = dto.avatarUrl.ifBlank { null }?.let { AdaptiveStreamSelector.resolveMediaUrl(baseUrl, it) },
+          authorVerifiedTier = dto.verifiedTier,
           isFollowingAuthor = dto.isFollowing,
           isOwner = dto.isOwner,
           privacy = PostPrivacy.PUBLIC,
@@ -2112,6 +2118,7 @@ class TelefamViewModel(
       fullName = dto.fullName.ifBlank { existing?.fullName ?: "User" },
       username = dto.username.ifBlank { existing?.username ?: dto.userId },
       avatarUrl = avatarResolved ?: existing?.avatarUrl,
+      verifiedTier = dto.verifiedTier.ifBlank { existing?.verifiedTier ?: "none" },
       bio = dto.bio,
       location = dto.location,
       countryIso = dto.countryIso.ifBlank { existing?.countryIso.orEmpty() },
@@ -4098,6 +4105,8 @@ class TelefamViewModel(
     }
     _uiState.update { it.copy(showNotificationsSheet = false) }
     val route = when {
+      item.kind == "new_subscriber" -> "subscribers"
+      item.kind == "subscription_update" -> "subscriptions"
       item.conversationId.isNotBlank() -> "chat"
       item.postId.isNotBlank() -> "post"
       item.targetUserId.isNotBlank() || item.actorUserId.isNotBlank() -> "profile"
@@ -4181,6 +4190,36 @@ class TelefamViewModel(
           ?: state.profileForm.selectedCountry.iso
         starsController.openStarsHub(country, state.profileForm.location)
       }
+      "verification" -> {
+        val country = state.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+          ?: state.profileForm.selectedCountry.iso
+        verificationController.openGetVerified(
+          profileCountryIso = country,
+          locationHint = state.profileForm.location,
+          fullName = state.ownProfileState?.fullName ?: state.profileForm.fullName,
+          username = state.ownProfileState?.username ?: state.profileForm.username,
+          avatarUrl = state.ownProfileState?.avatarUrl.orEmpty(),
+          initialVerifiedTier = state.ownProfileState?.verifiedTier ?: "none",
+        )
+      }
+      "subscribers" -> {
+        val country = state.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+          ?: state.profileForm.selectedCountry.iso
+        subscriptionsController.openHub(
+          initialTab = telefam.company.subscriptions.SubscriptionsHubTab.SUBSCRIBERS,
+          profileCountryIso = country,
+          locationHint = state.profileForm.location,
+        )
+      }
+      "subscriptions" -> {
+        val country = state.ownProfileState?.countryIso?.takeIf { it.isNotBlank() }
+          ?: state.profileForm.selectedCountry.iso
+        subscriptionsController.openHub(
+          initialTab = telefam.company.subscriptions.SubscriptionsHubTab.ACTIVE_PLANS,
+          profileCountryIso = country,
+          locationHint = state.profileForm.location,
+        )
+      }
       "active_call" -> {
         callController.expandFromMinimized()
       }
@@ -4220,6 +4259,8 @@ class TelefamViewModel(
     super.onCleared()
     stopSongPreview()
     callController.dispose()
+    verificationController.dispose()
+    subscriptionsController.dispose()
     chatController.cleanup()
   }
 

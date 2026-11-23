@@ -38,7 +38,7 @@ import androidx.room.RoomDatabase
     SavedLinkEntity::class,
     CachedNotificationEntity::class,
   ],
-  version = 12,
+  version = 13,
   exportSchema = false,
 )
 abstract class TelefamDatabase : RoomDatabase() {

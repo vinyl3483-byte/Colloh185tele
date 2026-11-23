@@ -538,6 +538,33 @@
     <string name="ver_doc_purge_notice">Your selfie and ID images are encrypted in transit and permanently deleted after verification.</string>
     <string name="ver_doc_start_scan">Start ID capture</string>
     <string name="ver_under_review_title">Under review</string>
-    <string name="ver_under_review_sub">Review takes up to 3 working days. You will be notified once complete.</string>
+    <string name="ver_under_review_sub">It always takes 3 working days to review. You will be notified.</string>
     <string name="ver_verified_title">Verified</string>
+
+    <!-- Creator Subscriptions & Subscribers -->
+    <string name="sub_hub_title">Subscriptions</string>
+    <string name="sub_tab_subscribers">Subscribers</string>
+    <string name="sub_tab_active_plans">Active Plans</string>
+    <string name="sub_tab_goal_pricing">Goal &amp; Pricing</string>
+    <string name="sub_monthly">Monthly</string>
+    <string name="sub_annual">Annual</string>
+    <string name="sub_save_20">Save 20%</string>
+    <string name="sub_goal_title">Monthly Subscriber Goal</string>
+    <string name="sub_goal_subtitle">Set a target from $0.50 up to $100.00+ converted to your local currency</string>
+    <string name="sub_price_title">Membership Price ($0.50 – $100.00)</string>
+    <string name="sub_save_plan_cta">Save Plan &amp; Goal</string>
+    <string name="sub_saving_plan">Saving…</string>
+    <string name="sub_enable_creator_subs">Accept new subscribers</string>
+    <string name="sub_no_subscribers_title">No subscribers yet</string>
+    <string name="sub_no_subscribers_sub">Supporters who subscribe from your profile appear here with their plan and renewal schedule.</string>
+    <string name="sub_no_active_title">No active subscriptions</string>
+    <string name="sub_no_active_sub">Subscribe to creators from their profile to unlock exclusive access and manage renewals here.</string>
+    <string name="sub_cancel_cta">Cancel Subscription</string>
+    <string name="sub_renew_cta">Renew Subscription</string>
+    <string name="sub_restore_autorenew_cta">Restore Auto-Renew</string>
+    <string name="sub_subscribe_cta">Subscribe Now</string>
+    <string name="sub_active_badge">Subscribed</string>
+    <string name="sub_cancelled_badge">Cancels at period end</string>
+    <string name="sub_expired_badge">Expired</string>
+    <string name="sub_deposit_pay_note">Payments are verified server-side with Paystack or PayPal.</string>
 </resources>

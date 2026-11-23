@@ -114,6 +114,7 @@ fun DesktopProfileMenuScreen(
   isDark: Boolean,
   onBack: () -> Unit,
   onOpenStars: () -> Unit = {},
+  onOpenGetVerified: () -> Unit = {},
   onFeatureComingSoon: (String) -> Unit,
 ) {
   val accentRed = DesktopCrimson
@@ -158,10 +159,10 @@ fun DesktopProfileMenuScreen(
             val isVerified = entry.kind == DesktopProfileMenuKind.GET_VERIFIED
             Surface(
               onClick = {
-                if (entry.kind == DesktopProfileMenuKind.STARS) {
-                  onOpenStars()
-                } else {
-                  onFeatureComingSoon(entry.title)
+                when (entry.kind) {
+                  DesktopProfileMenuKind.STARS -> onOpenStars()
+                  DesktopProfileMenuKind.GET_VERIFIED -> onOpenGetVerified()
+                  else -> onFeatureComingSoon(entry.title)
                 }
               },
               shape = RoundedCornerShape(16.dp),
@@ -219,7 +220,7 @@ fun DesktopProfileMenuScreen(
 
                 if (isVerified) {
                   Surface(
-                    onClick = { onFeatureComingSoon(entry.title) },
+                    onClick = onOpenGetVerified,
                     shape = CircleShape,
                     color = accentRed,
                   ) {

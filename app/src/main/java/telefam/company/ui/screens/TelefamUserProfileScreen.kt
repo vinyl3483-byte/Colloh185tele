@@ -113,6 +113,7 @@ import telefam.company.core.formatProfileMetricCount
 import telefam.company.data.local.SavedLinkEntity
 import telefam.company.ui.components.PostThemeCanvasBox
 import telefam.company.ui.components.SmartInteractiveText
+import telefam.company.ui.components.TelefamVerifiedBadgeIcon
 import telefam.company.ui.components.postCardTextStyle
 import telefam.company.ui.theme.LocalTelefamDarkTheme
 import telefam.company.ui.theme.TelefamBlushWave
@@ -135,6 +136,7 @@ fun TelefamUserProfileScreen(
   onToggleFollow: () -> Unit,
   onMessageClick: () -> Unit,
   onSubscribeClick: () -> Unit,
+  onOwnerSubscribersClick: (() -> Unit)? = null,
   onOpenConnections: (isFollowers: Boolean) -> Unit,
   onDismissConnections: () -> Unit,
   onLoadMoreConnections: () -> Unit,
@@ -249,20 +251,30 @@ fun TelefamUserProfileScreen(
             )
           }
 
-          Text(
-            text = profile.fullName.ifBlank { "@${profile.username.ifBlank { profile.userId }}" },
-            style = MaterialTheme.typography.titleMedium.copy(
-              fontSize = 18.sp,
-              fontWeight = FontWeight.Bold,
-            ),
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-              .weight(1f)
-              .testTag("profile_display_name"),
-          )
+          Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+          ) {
+            Text(
+              text = profile.fullName.ifBlank { "@${profile.username.ifBlank { profile.userId }}" },
+              style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+              ),
+              color = MaterialTheme.colorScheme.onBackground,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              textAlign = TextAlign.Center,
+              modifier = Modifier
+                .weight(1f, fill = false)
+                .testTag("profile_display_name"),
+            )
+            if (profile.verifiedTier != "none" && profile.verifiedTier.isNotBlank()) {
+              Spacer(modifier = Modifier.width(6.dp))
+              TelefamVerifiedBadgeIcon(tier = profile.verifiedTier, size = 18.dp)
+            }
+          }
 
           Box(
             modifier = Modifier
@@ -331,6 +343,7 @@ fun TelefamUserProfileScreen(
                   accentCrimson = accentCrimson,
                   onBack = onBack,
                   onSubscribeClick = onSubscribeClick,
+                  onOwnerSubscribersClick = onOwnerSubscribersClick,
                   onOpenSettings = onOpenSettings,
                   onOpenMenu = onOpenMenu,
                   onOpenBackgrounds = onOpenBackgrounds,
@@ -1241,6 +1254,7 @@ private fun ProfileFadingHeroWithAvatar(
   accentCrimson: Color,
   onBack: () -> Unit,
   onSubscribeClick: () -> Unit,
+  onOwnerSubscribersClick: (() -> Unit)? = null,
   onOpenSettings: () -> Unit,
   onOpenMenu: () -> Unit,
   onOpenBackgrounds: () -> Unit,
@@ -1385,20 +1399,30 @@ private fun ProfileFadingHeroWithAvatar(
 
         Spacer(modifier = Modifier.width(10.dp))
 
-        Text(
-          text = profile.fullName.ifBlank { "@${profile.username.ifBlank { profile.userId }}" },
-          style = MaterialTheme.typography.titleMedium.copy(
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-          ),
-          color = Color.White,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          textAlign = if (profile.isOwner) TextAlign.Center else TextAlign.Center,
-          modifier = Modifier
-            .weight(1f)
-            .testTag("profile_display_name"),
-        )
+        Row(
+          modifier = Modifier.weight(1f),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.Center,
+        ) {
+          Text(
+            text = profile.fullName.ifBlank { "@${profile.username.ifBlank { profile.userId }}" },
+            style = MaterialTheme.typography.titleMedium.copy(
+              fontSize = 18.sp,
+              fontWeight = FontWeight.Bold,
+            ),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+              .weight(1f, fill = false)
+              .testTag("profile_display_name"),
+          )
+          if (profile.verifiedTier != "none" && profile.verifiedTier.isNotBlank()) {
+            Spacer(modifier = Modifier.width(6.dp))
+            TelefamVerifiedBadgeIcon(tier = profile.verifiedTier, size = 18.dp, isDarkTheme = true)
+          }
+        }
 
         if (profile.isOwner) {
           Row(
@@ -1406,7 +1430,7 @@ private fun ProfileFadingHeroWithAvatar(
             verticalAlignment = Alignment.CenterVertically,
           ) {
             HeroCircleActionButton(
-              onClick = onSubscribeClick,
+              onClick = { onOwnerSubscribersClick?.invoke() ?: onSubscribeClick() },
               testTag = "profile_owner_subscribers_button",
             ) {
               ProfileSubscribeCrownSvgIcon(

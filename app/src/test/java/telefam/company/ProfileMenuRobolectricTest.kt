@@ -25,10 +25,11 @@ class ProfileMenuRobolectricTest {
   val composeTestRule = createComposeRule()
 
   @Test
-  fun profileMenuRendersAllEightFeaturesAndGetVerifiedCtaAsComingSoon() {
+  fun profileMenuOpensStarsAndGetVerifiedWhileSixFeaturesRemainComingSoon() {
     val clickedFeatures = mutableListOf<String>()
     var backClicks = 0
     var starsClicks = 0
+    var verifiedClicks = 0
 
     composeTestRule.setContent {
       TelefamTheme(themeMode = ThemeMode.LIGHT) {
@@ -36,6 +37,7 @@ class ProfileMenuRobolectricTest {
           onBack = { backClicks++ },
           onFeatureComingSoon = { feature -> clickedFeatures.add(feature) },
           onOpenStars = { starsClicks++ },
+          onOpenGetVerified = { verifiedClicks++ },
         )
       }
     }
@@ -56,7 +58,6 @@ class ProfileMenuRobolectricTest {
       "wallet" to "Wallet",
       "linked_device" to "Linked device",
       "create_campaign" to "Create campaign",
-      "get_verified" to "Get Verified",
     )
 
     comingSoonEntries.forEach { (id, title) ->
@@ -67,13 +68,18 @@ class ProfileMenuRobolectricTest {
       assertTrue("Expected $title in clicked coming-soon list", clickedFeatures.contains(title))
     }
 
+    composeTestRule.onNodeWithTag("profile_menu_item_get_verified")
+      .performScrollTo()
+      .assertIsDisplayed()
+      .performClick()
+
     composeTestRule.onNodeWithTag("profile_menu_get_verified_cta")
       .performScrollTo()
       .assertIsDisplayed()
       .performClick()
 
-    assertEquals(8, clickedFeatures.size)
-    assertEquals("Get Verified", clickedFeatures.last())
+    assertEquals(2, verifiedClicks)
+    assertEquals(6, clickedFeatures.size)
 
     composeTestRule.onNodeWithTag("profile_menu_back_button").performClick()
     assertEquals(1, backClicks)
@@ -86,6 +92,7 @@ class ProfileMenuRobolectricTest {
       TelefamTheme(themeMode = ThemeMode.DARK) {
         TelefamProfileMenuScreen(
           onBack = {},
+          onOpenGetVerified = {},
           onFeatureComingSoon = {},
         )
       }

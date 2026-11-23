@@ -334,6 +334,21 @@ class TelefamRepository(
     )
   }
 
+  fun createVerificationController(scope: kotlinx.coroutines.CoroutineScope): telefam.company.verification.TelefamVerificationController {
+    return telefam.company.verification.TelefamVerificationController(
+      appContext = appContext,
+      scope = scope,
+      repository = this,
+    )
+  }
+
+  fun createSubscriptionsController(scope: kotlinx.coroutines.CoroutineScope): telefam.company.subscriptions.TelefamSubscriptionsController {
+    return telefam.company.subscriptions.TelefamSubscriptionsController(
+      scope = scope,
+      repository = this,
+    )
+  }
+
   internal fun getApiServiceOrNull(): TelefamApiService? = apiService
 
   internal suspend fun getDeviceFingerprint(): String = buildDeviceFingerprint()
@@ -2689,6 +2704,7 @@ class TelefamRepository(
       isHiddenByUser = false,
       viewsCount = viewsCount,
       privacy = privacy.ifBlank { "public" },
+      authorVerifiedTier = authorVerifiedTier.ifBlank { "none" },
       createdAtMs = createdAtMs,
       cachedAtMs = nowMs,
     )
@@ -2703,6 +2719,7 @@ class TelefamRepository(
       authorUsername = authorUsername,
       authorFullName = authorFullName,
       authorAvatarUrl = authorAvatarUrl.orEmpty(),
+      authorVerifiedTier = authorVerifiedTier.ifBlank { "none" },
       isFollowingAuthor = isFollowingAuthor,
       isOwner = isOwner,
       privacy = privacy.ifBlank { "public" },
@@ -2874,6 +2891,7 @@ class TelefamRepository(
             savedPostsJson = serializedSaved,
             repostedPostsJson = serializedReposted,
             lockedPostsJson = serializedLocked,
+            verifiedTier = body.verifiedTier.ifBlank { "none" },
             cachedAtMs = nowMs,
           ),
         )
@@ -2950,6 +2968,7 @@ class TelefamRepository(
         relationshipState = relState,
         isBlocked = cachedProfile.isBlocked,
         riskScore = cachedProfile.riskScore,
+        verifiedTier = cachedProfile.verifiedTier.ifBlank { "none" },
         posts = effPosts,
         savedPosts = cachedSaved,
         repostedPosts = cachedReposted,

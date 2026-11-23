@@ -68,6 +68,7 @@ struct TelefamIosFeedItem: Identifiable, Codable {
     let recommendationLabel: String
     let createdAtMs: Int64
     var privacy: String
+    let authorVerifiedTier: String
 
     var id: String { postId }
 
@@ -105,6 +106,7 @@ struct TelefamIosFeedItem: Identifiable, Codable {
         case recommendationLabel = "recommendation_label"
         case createdAtMs = "created_at_ms"
         case privacy
+        case authorVerifiedTier = "author_verified_tier"
     }
 
     init(
@@ -143,7 +145,8 @@ struct TelefamIosFeedItem: Identifiable, Codable {
         repostedByUsername: String = "",
         recommendationLabel: String = "",
         createdAtMs: Int64 = 0,
-        privacy: String = "public"
+        privacy: String = "public",
+        authorVerifiedTier: String = "none"
     ) {
         self.postId = postId
         self.authorUserId = authorUserId
@@ -181,6 +184,7 @@ struct TelefamIosFeedItem: Identifiable, Codable {
         self.recommendationLabel = recommendationLabel
         self.createdAtMs = createdAtMs
         self.privacy = privacy
+        self.authorVerifiedTier = authorVerifiedTier
     }
 
     init(from decoder: Decoder) throws {
@@ -221,6 +225,7 @@ struct TelefamIosFeedItem: Identifiable, Codable {
         recommendationLabel = try c.decodeIfPresent(String.self, forKey: .recommendationLabel) ?? ""
         createdAtMs = try c.decodeIfPresent(Int64.self, forKey: .createdAtMs) ?? 0
         privacy = try c.decodeIfPresent(String.self, forKey: .privacy) ?? "public"
+        authorVerifiedTier = try c.decodeIfPresent(String.self, forKey: .authorVerifiedTier) ?? "none"
     }
 }
 
@@ -1522,9 +1527,12 @@ struct TelefamIosFeedView: View {
                     onOpenAuthorProfile(item.authorUserId)
                 }
             } label: {
-                Text(item.authorUsername.isEmpty ? item.authorFullName : item.authorUsername)
-                    .font(.system(size: 16.5, weight: .bold))
-                    .foregroundColor(.white)
+                HStack(spacing: 5) {
+                    Text(item.authorUsername.isEmpty ? item.authorFullName : item.authorUsername)
+                        .font(.system(size: 16.5, weight: .bold))
+                        .foregroundColor(.white)
+                    TelefamIosVerifiedBadgeView(tier: item.authorVerifiedTier, size: 16)
+                }
             }
             .buttonStyle(.plain)
 

@@ -186,6 +186,14 @@ func (h *Handler) handlePaystackWebhook(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusOK, map[string]any{"received": true})
 		return
 	}
+	if strings.Contains(string(rawBody), `"TFSP_`) {
+		if err := h.ensureSubscriptionsService().HandlePaystackWebhook(r.Context(), rawBody, sig); err != nil {
+			h.writeSubscriptionsError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"received": true})
+		return
+	}
 	if err := h.ensureStarsService().HandlePaystackWebhook(r.Context(), rawBody, sig); err != nil {
 		if errors.Is(err, stars.ErrForbidden) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -221,6 +229,7 @@ func (h *Handler) handlePayPalWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.ensureVerificationService().HandlePayPalWebhook(r.Context(), r.Header, rawBody)
+	_ = h.ensureSubscriptionsService().HandlePayPalWebhook(r.Context(), r.Header, rawBody)
 	writeJSON(w, http.StatusOK, map[string]any{"received": true})
 }
 

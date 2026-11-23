@@ -29,6 +29,7 @@ import (
 	"telefam.company/backend/internal/ratelimit"
 	"telefam.company/backend/internal/security"
 	"telefam.company/backend/internal/stars"
+	"telefam.company/backend/internal/subscriptions"
 	"telefam.company/backend/internal/verification"
 )
 
@@ -206,6 +207,7 @@ type Handler struct {
 	calls               *calls.Service
 	stars               *stars.Service
 	verSvc              *verification.Service
+	subs                *subscriptions.Service
 	mu                  sync.Mutex
 	profiles            map[string]storedProfile
 	usernames           map[string]string
@@ -360,6 +362,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/verification/document/submit", h.handleSubmitDocument)
 	mux.HandleFunc("POST /v1/verification/review/complete", h.handleCompleteVerificationReview)
 	mux.HandleFunc("GET /v1/verification/payment-return", h.handleVerificationPaymentReturn)
+	mux.HandleFunc("GET /v1/subscriptions/hub", h.handleGetSubscriptionsHub)
+	mux.HandleFunc("POST /v1/subscriptions/plan", h.handleSaveCreatorSubscriptionPlan)
+	mux.HandleFunc("GET /v1/subscriptions/creator", h.handleGetCreatorSubscriptionOffering)
+	mux.HandleFunc("POST /v1/subscriptions/checkout/init", h.handleInitSubscriptionCheckout)
+	mux.HandleFunc("POST /v1/subscriptions/checkout/verify", h.handleVerifySubscriptionCheckout)
+	mux.HandleFunc("POST /v1/subscriptions/cancel", h.handleCancelSubscription)
+	mux.HandleFunc("POST /v1/subscriptions/renew", h.handleRenewSubscription)
+	mux.HandleFunc("GET /v1/subscriptions/payment-return", h.handleSubscriptionsPaymentReturn)
 	mux.HandleFunc("POST /v1/webhooks/paystack", h.handlePaystackWebhook)
 	mux.HandleFunc("POST /v1/webhooks/paypal", h.handlePayPalWebhook)
 	mux.HandleFunc("PUT /v1/settings/notifications", h.handleUpdateNotificationSettings)

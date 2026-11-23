@@ -136,6 +136,8 @@ private val ProfileMenuEntries = listOf(
 fun TelefamProfileMenuScreen(
   onBack: () -> Unit,
   onOpenStars: () -> Unit = {},
+  onOpenSubscriptions: () -> Unit = {},
+  onOpenGetVerified: () -> Unit = {},
   onFeatureComingSoon: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -222,10 +224,11 @@ fun TelefamProfileMenuScreen(
 
           Surface(
             onClick = {
-              if (entry.kind == ProfileMenuFeatureKind.STARS) {
-                onOpenStars()
-              } else {
-                triggerItemComingSoon(title)
+              when (entry.kind) {
+                ProfileMenuFeatureKind.STARS -> onOpenStars()
+                ProfileMenuFeatureKind.SUBSCRIPTION -> onOpenSubscriptions()
+                ProfileMenuFeatureKind.GET_VERIFIED -> onOpenGetVerified()
+                else -> triggerItemComingSoon(title)
               }
             },
             shape = RoundedCornerShape(16.dp),
@@ -285,7 +288,7 @@ fun TelefamProfileMenuScreen(
 
               if (isVerifiedCard) {
                 Surface(
-                  onClick = { triggerItemComingSoon(title) },
+                  onClick = onOpenGetVerified,
                   shape = CircleShape,
                   color = accentRed,
                   modifier = Modifier

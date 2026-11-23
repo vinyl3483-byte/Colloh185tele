@@ -213,6 +213,7 @@ data class DesktopFeedPost(
   val authorUsername: String,
   val authorFullName: String,
   val authorAvatarUrl: String = "",
+  val authorVerifiedTier: String = "none",
   val isFollowingAuthor: Boolean,
   val isOwner: Boolean,
   val privacy: String = "public",
@@ -304,6 +305,8 @@ fun main() = application {
   val callController = remember { DesktopCallController(apiClient, chatController) }
   val starsController = remember { DesktopStarsController(apiClient, chatController) }
   val starsState by starsController.state.collectAsState()
+  val verificationController = remember { DesktopVerificationController(apiClient, chatController) }
+  val verificationState by verificationController.state.collectAsState()
   val smartController = remember {
     DesktopSmartActionController(apiClient = apiClient, scope = scope) { toastMessage = it }
   }
@@ -342,6 +345,7 @@ fun main() = application {
       chatController.attachSession(session.userId)
       callController.attachSession(session.userId)
       starsController.attachSession(session.userId)
+      verificationController.attachSession(session.userId)
       smartController.onAuthenticated()
       val fetched = withContext(Dispatchers.IO) { apiClient.getSettings() }
       settingsBundle = fetched
@@ -382,6 +386,7 @@ fun main() = application {
       }
     } else {
       callController.detachSession()
+      verificationController.detachSession()
       chatController.detachSession()
       smartController.onLogout()
       activeTab = "contacts"
@@ -1075,6 +1080,13 @@ fun main() = application {
                       onToggleTheme = toggleTheme,
                       onOpenSettings = { showSettingsScreen = true },
                       onOpenStars = { starsController.openStarsHub(session.location) },
+                      onOpenGetVerified = {
+                        verificationController.openGetVerified(
+                          locationHint = session.location,
+                          fullName = session.fullName,
+                          username = session.username,
+                        )
+                      },
                       onSignOut = { showSettingsScreen = true },
                       onMessageUser = { targetProf ->
                         chatController.openDirectConversationByUser(
@@ -1275,6 +1287,13 @@ fun main() = application {
               onToggleTheme = toggleTheme,
               onOpenSettings = { showSettingsScreen = true },
               onOpenStars = { starsController.openStarsHub(session.location) },
+              onOpenGetVerified = {
+                verificationController.openGetVerified(
+                  locationHint = session.location,
+                  fullName = session.fullName,
+                  username = session.username,
+                )
+              },
               onSignOut = {
                 showSettingsScreen = true
               },
@@ -1638,6 +1657,13 @@ fun main() = application {
                 item.kind.equals("star_received", ignoreCase = true) -> {
                   starsController.openStarsHub(session.location)
                 }
+                item.kind.equals("verification_update", ignoreCase = true) -> {
+                  verificationController.openGetVerified(
+                    locationHint = session.location,
+                    fullName = session.fullName,
+                    username = session.username,
+                  )
+                }
                 item.postId.isNotBlank() -> {
                   val post = feedPosts.firstOrNull { it.postId == item.postId }
                   if (post != null) {
@@ -1661,6 +1687,13 @@ fun main() = application {
             controller = starsController,
             isDark = isDark,
             onOpenUserProfile = { uid -> openUserProfile(uid) },
+          )
+        }
+
+        if (verificationState.isOpen && session.isAuthenticated && session.profileCompleted) {
+          DesktopVerificationHostScreen(
+            controller = verificationController,
+            isDark = isDark,
           )
         }
 
@@ -4109,13 +4142,23 @@ private fun DesktopReusableFeedStage(
             }
           }
         }
-        Text(
-          text = current.authorUsername,
-          color = Color.White,
-          fontWeight = FontWeight.Bold,
-          fontSize = 17.sp,
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
           modifier = Modifier.clickable { onOpenAuthorProfile(current.authorUserId) },
-        )
+        ) {
+          Text(
+            text = current.authorUsername,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 17.sp,
+          )
+          DesktopVerifiedBadgeIcon(
+            tier = current.authorVerifiedTier,
+            size = 17.dp,
+            isDarkTheme = true,
+          )
+        }
         val captionText = current.caption.ifBlank {
           if (current.mode != SharedPostMode.TEXT) current.textContent else ""
         }
@@ -4690,6 +4733,7 @@ private fun DesktopUserProfileScreen(
   onToggleTheme: () -> Unit,
   onOpenSettings: () -> Unit = {},
   onOpenStars: () -> Unit = {},
+  onOpenGetVerified: () -> Unit = {},
   onSignOut: () -> Unit,
   onMessageUser: (DesktopUserProfile) -> Unit = {},
   onToast: (String) -> Unit,
@@ -4841,16 +4885,29 @@ private fun DesktopUserProfileScreen(
               Spacer(modifier = Modifier.width(44.dp))
             }
 
-            Text(
-              text = p?.fullName?.ifBlank { "@${p.username.ifBlank { p.userId }}" } ?: "Profile",
-              fontSize = 18.sp,
-              fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onBackground,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-              textAlign = TextAlign.Center,
+            Row(
               modifier = Modifier.weight(1f),
-            )
+              horizontalArrangement = Arrangement.Center,
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(
+                text = p?.fullName?.ifBlank { "@${p.username.ifBlank { p.userId }}" } ?: "Profile",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+              )
+              if (p != null && p.verifiedTier != "none") {
+                Spacer(modifier = Modifier.width(6.dp))
+                DesktopVerifiedBadgeIcon(
+                  tier = p.verifiedTier,
+                  size = 18.dp,
+                  isDarkTheme = isDark,
+                )
+              }
+            }
 
             Box(
               modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).clickable(onClick = inviteAction),
@@ -4948,16 +5005,29 @@ private fun DesktopUserProfileScreen(
                           Spacer(modifier = Modifier.width(40.dp))
                         }
 
-                        Text(
-                          text = p.fullName.ifBlank { "@${p.username.ifBlank { p.userId }}" },
-                          fontSize = 18.sp,
-                          fontWeight = FontWeight.Bold,
-                          color = Color.White,
-                          maxLines = 1,
-                          overflow = TextOverflow.Ellipsis,
-                          textAlign = TextAlign.Center,
+                        Row(
                           modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                        )
+                          horizontalArrangement = Arrangement.Center,
+                          verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                          Text(
+                            text = p.fullName.ifBlank { "@${p.username.ifBlank { p.userId }}" },
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                          )
+                          if (p.verifiedTier != "none") {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            DesktopVerifiedBadgeIcon(
+                              tier = p.verifiedTier,
+                              size = 18.dp,
+                              isDarkTheme = true,
+                            )
+                          }
+                        }
 
                         if (p.isOwner) {
                           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -5798,6 +5868,10 @@ private fun DesktopUserProfileScreen(
           onOpenStars = {
             showProfileMenu = false
             onOpenStars()
+          },
+          onOpenGetVerified = {
+            showProfileMenu = false
+            onOpenGetVerified()
           },
           onFeatureComingSoon = { title -> onToast("$title — Coming soon") },
         )

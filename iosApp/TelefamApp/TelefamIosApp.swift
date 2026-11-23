@@ -72,6 +72,14 @@ struct TelefamIosApp: App {
             }
             .onOpenURL { incomingURL in
                 let lower = incomingURL.absoluteString.lowercased()
+                if lower.contains("verification") && lower.contains("payment-return") {
+                    NotificationCenter.default.post(
+                        name: .telefamVerificationPaymentReturnUrl,
+                        object: nil,
+                        userInfo: ["url": incomingURL.absoluteString]
+                    )
+                    return
+                }
                 if lower.contains("stars") || lower.contains("payment-return") {
                     NotificationCenter.default.post(
                         name: .telefamStarsPaymentReturnUrl,

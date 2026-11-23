@@ -110,11 +110,11 @@ class TelefamFcmService : FirebaseMessagingService() {
         }
       }
 
-      "follow", "like", "mention", "star_received" -> {
+      "follow", "like", "mention", "star_received", "verification_update", "new_subscriber", "subscription_update" -> {
         val notifId = data["notification_id"].orEmpty().trim()
           .ifBlank { "fcm_${type}_${data["actor_user_id"].orEmpty()}_${data["post_id"].orEmpty()}_${System.currentTimeMillis()}" }
         val actorUserId = data["actor_user_id"].orEmpty().trim()
-        if (actorUserId == ownerUserId) return
+        if (actorUserId.isNotBlank() && actorUserId == ownerUserId) return
         val actorName = data["actor_name"].orEmpty().trim()
         val actorUsername = data["actor_username"].orEmpty().trim()
         val actorAvatarUrl = data["actor_avatar_url"].orEmpty().trim()
@@ -127,6 +127,9 @@ class TelefamFcmService : FirebaseMessagingService() {
             "follow" -> "Started following you"
             "like" -> "Liked your post"
             "star_received" -> if (starsAmount > 0L) "Sent you $starsAmount Telefam Stars" else "Sent you Telefam Stars"
+            "verification_update" -> "Your Telefam verification status has been updated."
+            "new_subscriber" -> "Subscribed to your creator plan."
+            "subscription_update" -> "Your Telefam subscription status was updated."
             else -> "Mentioned you"
           }
         }

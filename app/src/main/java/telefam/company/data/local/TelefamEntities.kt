@@ -235,6 +235,7 @@ data class CachedFeedPostEntity(
   val isHiddenByUser: Boolean,
   val viewsCount: Long = 0L,
   val privacy: String = "public",
+  val authorVerifiedTier: String = "none",
   val createdAtMs: Long,
   val cachedAtMs: Long,
 )
@@ -272,6 +273,7 @@ data class CachedUserProfileEntity(
   val savedPostsJson: String = "[]",
   val repostedPostsJson: String = "[]",
   val lockedPostsJson: String = "[]",
+  val verifiedTier: String = "none",
   val cachedAtMs: Long,
 )
 

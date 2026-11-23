@@ -449,6 +449,7 @@ data class UserProfileResponseDto(
   @Json(name = "following_visibility") val followingVisibility: String = "everyone",
   @Json(name = "show_activity_status") val showActivityStatus: Boolean = true,
   @Json(name = "risk_score") val riskScore: Double = 0.0,
+  @Json(name = "verified_tier") val verifiedTier: String = "none",
   val videos: List<UserProfileVideoDto> = emptyList(),
   val posts: List<FeedItemDto> = emptyList(),
   @Json(name = "saved_posts") val savedPosts: List<FeedItemDto> = emptyList(),
@@ -520,6 +521,7 @@ data class FeedItemDto(
   @Json(name = "author_username") val authorUsername: String = "",
   @Json(name = "author_full_name") val authorFullName: String = "",
   @Json(name = "author_avatar_url") val authorAvatarUrl: String = "",
+  @Json(name = "author_verified_tier") val authorVerifiedTier: String = "none",
   @Json(name = "is_following_author") val isFollowingAuthor: Boolean = false,
   @Json(name = "is_owner") val isOwner: Boolean = false,
   val privacy: String = "public",
@@ -1429,6 +1431,395 @@ data class SendStarsResponseDto(
 )
 
 @JsonClass(generateAdapter = true)
+data class TierPricingDto(
+  val tier: String = "",
+  val title: String = "",
+  @Json(name = "badge_title") val badgeTitle: String = "",
+  @Json(name = "currency_code") val currencyCode: String = "USD",
+  @Json(name = "currency_symbol") val currencySymbol: String = "$",
+  @Json(name = "monthly_display") val monthlyDisplay: String = "",
+  @Json(name = "annual_display") val annualDisplay: String = "",
+  @Json(name = "annual_original_display") val annualOriginalDisplay: String = "",
+  @Json(name = "discount_percent") val discountPercent: Int = 20,
+  @Json(name = "paystack_monthly_minor") val paystackMonthlyMinor: Long = 0L,
+  @Json(name = "paystack_annual_minor") val paystackAnnualMinor: Long = 0L,
+  @Json(name = "paystack_currency") val paystackCurrency: String = "USD",
+  @Json(name = "paypal_monthly_value") val paypalMonthlyValue: String = "",
+  @Json(name = "paypal_annual_value") val paypalAnnualValue: String = "",
+  @Json(name = "paypal_currency") val paypalCurrency: String = "USD",
+)
+
+@JsonClass(generateAdapter = true)
+data class VerificationStatusResponseDto(
+  val success: Boolean = false,
+  @Json(name = "user_id") val userId: String = "",
+  @Json(name = "verified_tier") val verifiedTier: String = "none",
+  @Json(name = "pending_tier") val pendingTier: String = "none",
+  @Json(name = "billing_cycle") val billingCycle: String = "monthly",
+  @Json(name = "plan_status") val planStatus: String = "none",
+  @Json(name = "trial_eligible") val trialEligible: Boolean = true,
+  @Json(name = "trial_ends_at_ms") val trialEndsAtMs: Long = 0L,
+  @Json(name = "subscription_ends_at_ms") val subscriptionEndsAtMs: Long = 0L,
+  @Json(name = "liveness_status") val livenessStatus: String = "not_started",
+  @Json(name = "liveness_score") val livenessScore: Int = 0,
+  @Json(name = "liveness_verified_at_ms") val livenessVerifiedAtMs: Long = 0L,
+  @Json(name = "document_type") val documentType: String = "",
+  @Json(name = "document_status") val documentStatus: String = "not_started",
+  @Json(name = "doc_last4") val docLast4: String = "",
+  @Json(name = "doc_expiry_iso") val docExpiryIso: String = "",
+  @Json(name = "extracted_full_name") val extractedFullName: String = "",
+  @Json(name = "merged_to_profile") val mergedToProfile: Boolean = false,
+  @Json(name = "review_status") val reviewStatus: String = "not_started",
+  @Json(name = "review_eta_working_days") val reviewEtaWorkingDays: Int = 3,
+  @Json(name = "review_submitted_at_ms") val reviewSubmittedAtMs: Long = 0L,
+  @Json(name = "review_due_at_ms") val reviewDueAtMs: Long = 0L,
+  @Json(name = "verified_at_ms") val verifiedAtMs: Long = 0L,
+  @Json(name = "documents_purged") val documentsPurged: Boolean = false,
+  @Json(name = "documents_purged_at_ms") val documentsPurgedAtMs: Long = 0L,
+  @Json(name = "rejection_reason") val rejectionReason: String = "",
+  @Json(name = "country_iso") val countryIso: String = "US",
+  val tiers: List<TierPricingDto> = emptyList(),
+  @Json(name = "security_notice") val securityNotice: String = "",
+  @Json(name = "server_epoch_ms") val serverEpochMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
+data class TrialActivateRequestDto(
+  val tier: String,
+  @Json(name = "billing_cycle") val billingCycle: String,
+  @Json(name = "idempotency_key") val idempotencyKey: String,
+)
+
+@JsonClass(generateAdapter = true)
+data class VerificationCheckoutInitRequestDto(
+  val tier: String,
+  @Json(name = "billing_cycle") val billingCycle: String,
+  val provider: String,
+  @Json(name = "country_iso") val countryIso: String,
+  @Json(name = "idempotency_key") val idempotencyKey: String,
+)
+
+@JsonClass(generateAdapter = true)
+data class VerificationPaymentDto(
+  @Json(name = "payment_id") val paymentId: String = "",
+  val tier: String = "",
+  @Json(name = "billing_cycle") val billingCycle: String = "monthly",
+  val provider: String = "",
+  @Json(name = "provider_reference") val providerReference: String = "",
+  @Json(name = "provider_order_id") val providerOrderId: String = "",
+  @Json(name = "expected_amount_minor") val expectedAmountMinor: Long = 0L,
+  @Json(name = "expected_currency") val expectedCurrency: String = "",
+  @Json(name = "paid_amount_minor") val paidAmountMinor: Long = 0L,
+  @Json(name = "paid_currency") val paidCurrency: String = "",
+  val status: String = "",
+  @Json(name = "checkout_url") val checkoutUrl: String = "",
+  @Json(name = "verified_via") val verifiedVia: String = "",
+  @Json(name = "created_at_ms") val createdAtMs: Long = 0L,
+  @Json(name = "completed_at_ms") val completedAtMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
+data class VerificationCheckoutInitResponseDto(
+  val success: Boolean = false,
+  val payment: VerificationPaymentDto = VerificationPaymentDto(),
+  val status: VerificationStatusResponseDto = VerificationStatusResponseDto(),
+  @Json(name = "return_url") val returnUrl: String = "",
+)
+
+@JsonClass(generateAdapter = true)
+data class VerificationCheckoutVerifyRequestDto(
+  @Json(name = "payment_id") val paymentId: String = "",
+  val reference: String = "",
+  @Json(name = "paypal_order_id") val paypalOrderId: String = "",
+  @Json(name = "idempotency_key") val idempotencyKey: String,
+)
+
+@JsonClass(generateAdapter = true)
+data class VerificationCheckoutVerifyResponseDto(
+  val success: Boolean = false,
+  val payment: VerificationPaymentDto = VerificationPaymentDto(),
+  val status: VerificationStatusResponseDto = VerificationStatusResponseDto(),
+)
+
+@JsonClass(generateAdapter = true)
+data class LivenessSessionRequestDto(
+  val tier: String,
+  @Json(name = "screen_capture_active") val screenCaptureActive: Boolean = false,
+)
+
+@JsonClass(generateAdapter = true)
+data class LivenessSessionResponseDto(
+  val success: Boolean = false,
+  @Json(name = "challenge_id") val challengeId: String = "",
+  @Json(name = "challenge_token") val challengeToken: String = "",
+  val nonce: String = "",
+  val sequence: List<String> = emptyList(),
+  @Json(name = "expires_at_ms") val expiresAtMs: Long = 0L,
+  @Json(name = "anti_spoof_notice") val antiSpoofNotice: String = "",
+  @Json(name = "server_epoch_ms") val serverEpochMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
+data class LivenessStepTelemetryDto(
+  val step: String,
+  val yaw: Double,
+  val pitch: Double,
+  @Json(name = "left_eye_open") val leftEyeOpen: Double,
+  @Json(name = "right_eye_open") val rightEyeOpen: Double,
+  val luma: Double,
+  @Json(name = "captured_at_ms") val capturedAtMs: Long,
+)
+
+@JsonClass(generateAdapter = true)
+data class LivenessSubmitRequestDto(
+  @Json(name = "challenge_id") val challengeId: String,
+  @Json(name = "challenge_token") val challengeToken: String,
+  @Json(name = "screen_capture_active") val screenCaptureActive: Boolean,
+  @Json(name = "selfie_image_b64") val selfieImageB64: String,
+  val steps: List<LivenessStepTelemetryDto>,
+)
+
+@JsonClass(generateAdapter = true)
+data class LivenessSubmitResponseDto(
+  val success: Boolean = false,
+  val passed: Boolean = false,
+  @Json(name = "liveness_score") val livenessScore: Int = 0,
+  val message: String = "",
+  val status: VerificationStatusResponseDto = VerificationStatusResponseDto(),
+)
+
+@JsonClass(generateAdapter = true)
+data class DocumentSessionRequestDto(
+  @Json(name = "document_type") val documentType: String,
+  @Json(name = "screen_capture_active") val screenCaptureActive: Boolean = false,
+)
+
+@JsonClass(generateAdapter = true)
+data class DocumentSessionResponseDto(
+  val success: Boolean = false,
+  @Json(name = "challenge_id") val challengeId: String = "",
+  @Json(name = "challenge_token") val challengeToken: String = "",
+  @Json(name = "document_type") val documentType: String = "",
+  val nonce: String = "",
+  @Json(name = "expires_at_ms") val expiresAtMs: Long = 0L,
+  @Json(name = "privacy_notice") val privacyNotice: String = "",
+  @Json(name = "server_epoch_ms") val serverEpochMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
+data class DocumentSubmitRequestDto(
+  @Json(name = "challenge_id") val challengeId: String,
+  @Json(name = "challenge_token") val challengeToken: String,
+  @Json(name = "document_type") val documentType: String,
+  @Json(name = "screen_capture_active") val screenCaptureActive: Boolean,
+  @Json(name = "document_image_b64") val documentImageB64: String,
+  @Json(name = "client_ocr_raw_text") val clientOcrRawText: String,
+  @Json(name = "sharpness_score") val sharpnessScore: Double,
+  @Json(name = "luminance_mean") val luminanceMean: Double,
+  @Json(name = "glare_ratio") val glareRatio: Double,
+  @Json(name = "all_corners_detected") val allCornersDetected: Boolean,
+)
+
+@JsonClass(generateAdapter = true)
+data class DocumentSubmitResponseDto(
+  val success: Boolean = false,
+  val accepted: Boolean = false,
+  @Json(name = "extracted_full_name") val extractedFullName: String = "",
+  @Json(name = "extracted_doc_last4") val extractedDocLast4: String = "",
+  @Json(name = "extracted_expiry") val extractedExpiry: String = "",
+  @Json(name = "documents_purged") val documentsPurged: Boolean = false,
+  val message: String = "",
+  val status: VerificationStatusResponseDto = VerificationStatusResponseDto(),
+)
+
+@JsonClass(generateAdapter = true)
+data class SubPlanPricingDto(
+  @Json(name = "monthly_usd_cents") val monthlyUsdCents: Long = 500L,
+  @Json(name = "annual_usd_cents") val annualUsdCents: Long = 4800L,
+  @Json(name = "annual_discount_pct") val annualDiscountPct: Int = 20,
+  @Json(name = "currency_code") val currencyCode: String = "USD",
+  @Json(name = "currency_symbol") val currencySymbol: String = "$",
+  @Json(name = "monthly_display") val monthlyDisplay: String = "$5.00",
+  @Json(name = "annual_display") val annualDisplay: String = "$48.00",
+  @Json(name = "annual_original_display") val annualOriginalDisplay: String = "$60.00",
+  @Json(name = "paystack_monthly_minor") val paystackMonthlyMinor: Long = 500L,
+  @Json(name = "paystack_annual_minor") val paystackAnnualMinor: Long = 4800L,
+  @Json(name = "paystack_currency") val paystackCurrency: String = "USD",
+  @Json(name = "paypal_monthly_value") val paypalMonthlyValue: String = "5.00",
+  @Json(name = "paypal_annual_value") val paypalAnnualValue: String = "48.00",
+  @Json(name = "paypal_currency") val paypalCurrency: String = "USD",
+)
+
+@JsonClass(generateAdapter = true)
+data class GoalPresetDto(
+  @Json(name = "amount_usd_cents") val amountUsdCents: Long = 50L,
+  @Json(name = "usd_label") val usdLabel: String = "$0.50",
+  @Json(name = "local_display") val localDisplay: String = "$0.50",
+)
+
+@JsonClass(generateAdapter = true)
+data class CreatorPlanDto(
+  @Json(name = "creator_user_id") val creatorUserId: String = "",
+  val enabled: Boolean = true,
+  @Json(name = "monthly_usd_cents") val monthlyUsdCents: Long = 500L,
+  @Json(name = "annual_discount_pct") val annualDiscountPct: Int = 20,
+  @Json(name = "monthly_goal_usd_cents") val monthlyGoalUsdCents: Long = 10000L,
+  @Json(name = "goal_usd_display") val goalUsdDisplay: String = "$100.00",
+  @Json(name = "goal_local_display") val goalLocalDisplay: String = "$100.00",
+  @Json(name = "current_mrr_usd_cents") val currentMrrUsdCents: Long = 0L,
+  @Json(name = "current_mrr_usd_display") val currentMrrUsdDisplay: String = "$0.00",
+  @Json(name = "current_mrr_local_display") val currentMrrLocalDisplay: String = "$0.00",
+  @Json(name = "goal_progress_pct") val goalProgressPct: Double = 0.0,
+  @Json(name = "goal_reached") val goalReached: Boolean = false,
+  @Json(name = "active_subscriber_count") val activeSubscriberCount: Int = 0,
+  @Json(name = "perks_summary") val perksSummary: String = "",
+  val pricing: SubPlanPricingDto = SubPlanPricingDto(),
+  @Json(name = "updated_at_ms") val updatedAtMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
+data class SubscriptionRecordDto(
+  @Json(name = "subscription_id") val subscriptionId: String = "",
+  @Json(name = "subscriber_user_id") val subscriberUserId: String = "",
+  @Json(name = "subscriber_name") val subscriberName: String = "",
+  @Json(name = "subscriber_username") val subscriberUsername: String = "",
+  @Json(name = "subscriber_avatar_url") val subscriberAvatarUrl: String = "",
+  @Json(name = "subscriber_verified_tier") val subscriberVerifiedTier: String = "none",
+  @Json(name = "creator_user_id") val creatorUserId: String = "",
+  @Json(name = "creator_name") val creatorName: String = "",
+  @Json(name = "creator_username") val creatorUsername: String = "",
+  @Json(name = "creator_avatar_url") val creatorAvatarUrl: String = "",
+  @Json(name = "creator_verified_tier") val creatorVerifiedTier: String = "none",
+  @Json(name = "billing_cycle") val billingCycle: String = "monthly",
+  val status: String = "active",
+  @Json(name = "auto_renew") val autoRenew: Boolean = true,
+  @Json(name = "amount_usd_cents") val amountUsdCents: Long = 0L,
+  @Json(name = "amount_display") val amountDisplay: String = "",
+  val provider: String = "paystack",
+  @Json(name = "started_at_ms") val startedAtMs: Long = 0L,
+  @Json(name = "current_period_end_ms") val currentPeriodEndMs: Long = 0L,
+  @Json(name = "cancelled_at_ms") val cancelledAtMs: Long = 0L,
+  @Json(name = "can_cancel") val canCancel: Boolean = false,
+  @Json(name = "can_renew") val canRenew: Boolean = false,
+)
+
+@JsonClass(generateAdapter = true)
+data class SubscriptionsHubResponseDto(
+  val success: Boolean = false,
+  @Json(name = "user_id") val userId: String = "",
+  @Json(name = "country_iso") val countryIso: String = "US",
+  @Json(name = "currency_code") val currencyCode: String = "USD",
+  @Json(name = "my_plan") val myPlan: CreatorPlanDto = CreatorPlanDto(),
+  val subscribers: List<SubscriptionRecordDto> = emptyList(),
+  @Json(name = "active_subscriptions") val activeSubscriptions: List<SubscriptionRecordDto> = emptyList(),
+  @Json(name = "goal_presets") val goalPresets: List<GoalPresetDto> = emptyList(),
+  @Json(name = "server_epoch_ms") val serverEpochMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
+data class CreatorOfferingResponseDto(
+  val success: Boolean = false,
+  @Json(name = "creator_user_id") val creatorUserId: String = "",
+  @Json(name = "creator_name") val creatorName: String = "",
+  @Json(name = "creator_username") val creatorUsername: String = "",
+  @Json(name = "creator_avatar_url") val creatorAvatarUrl: String = "",
+  @Json(name = "creator_verified_tier") val creatorVerifiedTier: String = "none",
+  @Json(name = "country_iso") val countryIso: String = "US",
+  val plan: CreatorPlanDto = CreatorPlanDto(),
+  @Json(name = "viewer_subscription") val viewerSubscription: SubscriptionRecordDto? = null,
+  @Json(name = "is_owner") val isOwner: Boolean = false,
+  @Json(name = "server_epoch_ms") val serverEpochMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
+data class SaveCreatorPlanRequestDto(
+  val enabled: Boolean = true,
+  @Json(name = "monthly_usd_cents") val monthlyUsdCents: Long,
+  @Json(name = "annual_discount_pct") val annualDiscountPct: Int = 20,
+  @Json(name = "monthly_goal_usd_cents") val monthlyGoalUsdCents: Long,
+  @Json(name = "perks_summary") val perksSummary: String = "",
+  @Json(name = "country_iso") val countryIso: String = "",
+)
+
+@JsonClass(generateAdapter = true)
+data class SubscriptionPaymentDto(
+  @Json(name = "payment_id") val paymentId: String = "",
+  @Json(name = "creator_user_id") val creatorUserId: String = "",
+  @Json(name = "billing_cycle") val billingCycle: String = "monthly",
+  val provider: String = "",
+  @Json(name = "provider_reference") val providerReference: String = "",
+  @Json(name = "provider_order_id") val providerOrderId: String = "",
+  @Json(name = "amount_usd_cents") val amountUsdCents: Long = 0L,
+  @Json(name = "expected_amount_minor") val expectedAmountMinor: Long = 0L,
+  @Json(name = "expected_currency") val expectedCurrency: String = "",
+  @Json(name = "paid_amount_minor") val paidAmountMinor: Long = 0L,
+  @Json(name = "paid_currency") val paidCurrency: String = "",
+  val status: String = "",
+  @Json(name = "checkout_url") val checkoutUrl: String = "",
+  @Json(name = "verified_via") val verifiedVia: String = "",
+  @Json(name = "created_at_ms") val createdAtMs: Long = 0L,
+  @Json(name = "completed_at_ms") val completedAtMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
+data class SubscriptionCheckoutInitRequestDto(
+  @Json(name = "creator_user_id") val creatorUserId: String,
+  @Json(name = "billing_cycle") val billingCycle: String,
+  val provider: String,
+  @Json(name = "country_iso") val countryIso: String,
+  @Json(name = "idempotency_key") val idempotencyKey: String,
+)
+
+@JsonClass(generateAdapter = true)
+data class SubscriptionCheckoutInitResponseDto(
+  val success: Boolean = false,
+  val payment: SubscriptionPaymentDto = SubscriptionPaymentDto(),
+  val offering: CreatorOfferingResponseDto = CreatorOfferingResponseDto(),
+  @Json(name = "return_url") val returnUrl: String = "",
+)
+
+@JsonClass(generateAdapter = true)
+data class SubscriptionCheckoutVerifyRequestDto(
+  @Json(name = "payment_id") val paymentId: String = "",
+  val reference: String = "",
+  @Json(name = "paypal_order_id") val paypalOrderId: String = "",
+  @Json(name = "idempotency_key") val idempotencyKey: String,
+)
+
+@JsonClass(generateAdapter = true)
+data class SubscriptionCheckoutVerifyResponseDto(
+  val success: Boolean = false,
+  val payment: SubscriptionPaymentDto = SubscriptionPaymentDto(),
+  val subscription: SubscriptionRecordDto? = null,
+  val offering: CreatorOfferingResponseDto = CreatorOfferingResponseDto(),
+)
+
+@JsonClass(generateAdapter = true)
+data class CancelSubscriptionRequestDto(
+  @Json(name = "creator_user_id") val creatorUserId: String,
+  @Json(name = "country_iso") val countryIso: String = "",
+)
+
+@JsonClass(generateAdapter = true)
+data class RenewSubscriptionRequestDto(
+  @Json(name = "creator_user_id") val creatorUserId: String,
+  @Json(name = "billing_cycle") val billingCycle: String = "",
+  val provider: String = "",
+  @Json(name = "country_iso") val countryIso: String = "",
+  @Json(name = "idempotency_key") val idempotencyKey: String = "",
+)
+
+@JsonClass(generateAdapter = true)
+data class MutateSubscriptionResponseDto(
+  val success: Boolean = false,
+  @Json(name = "requires_checkout") val requiresCheckout: Boolean = false,
+  val subscription: SubscriptionRecordDto? = null,
+  val checkout: SubscriptionCheckoutInitResponseDto? = null,
+  val message: String = "",
+  @Json(name = "server_epoch_ms") val serverEpochMs: Long = 0L,
+)
+
+@JsonClass(generateAdapter = true)
 data class StartCallRequestDto(
   @Json(name = "peer_user_id") val peerUserId: String,
   @Json(name = "conversation_id") val conversationId: String = "",
@@ -2220,6 +2611,118 @@ interface TelefamApiService {
     @Header("Idempotency-Key") idempotencyKey: String,
     @Body body: SendStarsRequestDto,
   ): Response<SendStarsResponseDto>
+
+  @GET("v1/verification/status")
+  suspend fun getVerificationStatus(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Query("country_iso") countryIso: String = "",
+  ): Response<VerificationStatusResponseDto>
+
+  @POST("v1/verification/trial/activate")
+  suspend fun activateVerificationTrial(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Header("Idempotency-Key") idempotencyKey: String,
+    @Body body: TrialActivateRequestDto,
+  ): Response<VerificationStatusResponseDto>
+
+  @POST("v1/verification/checkout/init")
+  suspend fun initVerificationCheckout(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Header("Idempotency-Key") idempotencyKey: String,
+    @Body body: VerificationCheckoutInitRequestDto,
+  ): Response<VerificationCheckoutInitResponseDto>
+
+  @POST("v1/verification/checkout/verify")
+  suspend fun verifyVerificationCheckout(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Header("Idempotency-Key") idempotencyKey: String,
+    @Body body: VerificationCheckoutVerifyRequestDto,
+  ): Response<VerificationCheckoutVerifyResponseDto>
+
+  @POST("v1/verification/liveness/session")
+  suspend fun issueLivenessSession(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Body body: LivenessSessionRequestDto,
+  ): Response<LivenessSessionResponseDto>
+
+  @POST("v1/verification/liveness/submit")
+  suspend fun submitLiveness(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Body body: LivenessSubmitRequestDto,
+  ): Response<LivenessSubmitResponseDto>
+
+  @POST("v1/verification/document/session")
+  suspend fun issueDocumentSession(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Body body: DocumentSessionRequestDto,
+  ): Response<DocumentSessionResponseDto>
+
+  @POST("v1/verification/document/submit")
+  suspend fun submitDocument(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Body body: DocumentSubmitRequestDto,
+  ): Response<DocumentSubmitResponseDto>
+
+  @GET("v1/subscriptions/hub")
+  suspend fun getSubscriptionsHub(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Query("country_iso") countryIso: String = "",
+  ): Response<SubscriptionsHubResponseDto>
+
+  @POST("v1/subscriptions/plan")
+  suspend fun saveCreatorSubscriptionPlan(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Body body: SaveCreatorPlanRequestDto,
+  ): Response<SubscriptionsHubResponseDto>
+
+  @GET("v1/subscriptions/creator")
+  suspend fun getCreatorSubscriptionOffering(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Query("creator_user_id") creatorUserId: String,
+    @Query("country_iso") countryIso: String = "",
+  ): Response<CreatorOfferingResponseDto>
+
+  @POST("v1/subscriptions/checkout/init")
+  suspend fun initSubscriptionCheckout(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Header("Idempotency-Key") idempotencyKey: String,
+    @Body body: SubscriptionCheckoutInitRequestDto,
+  ): Response<SubscriptionCheckoutInitResponseDto>
+
+  @POST("v1/subscriptions/checkout/verify")
+  suspend fun verifySubscriptionCheckout(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Header("Idempotency-Key") idempotencyKey: String,
+    @Body body: SubscriptionCheckoutVerifyRequestDto,
+  ): Response<SubscriptionCheckoutVerifyResponseDto>
+
+  @POST("v1/subscriptions/cancel")
+  suspend fun cancelSubscription(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Body body: CancelSubscriptionRequestDto,
+  ): Response<MutateSubscriptionResponseDto>
+
+  @POST("v1/subscriptions/renew")
+  suspend fun renewSubscription(
+    @Header("Authorization") bearer: String,
+    @Header("X-Telefam-Device-FP") deviceFingerprint: String,
+    @Header("Idempotency-Key") idempotencyKey: String,
+    @Body body: RenewSubscriptionRequestDto,
+  ): Response<MutateSubscriptionResponseDto>
 
   @GET
   suspend fun downloadMedia(@Url url: String): Response<ResponseBody>

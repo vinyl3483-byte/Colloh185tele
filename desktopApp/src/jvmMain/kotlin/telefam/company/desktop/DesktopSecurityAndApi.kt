@@ -446,6 +446,7 @@ data class DesktopUserProfile(
   val savedPosts: List<DesktopFeedPost> = emptyList(),
   val repostedPosts: List<DesktopFeedPost> = emptyList(),
   val lockedPosts: List<DesktopFeedPost> = emptyList(),
+  val verifiedTier: String = "none",
 ) {
   val relationship: telefam.company.shared.ContactRelationshipState
     get() = telefam.company.shared.ContactRelationshipState.compute(isFollowing, followsYou)
@@ -2159,6 +2160,7 @@ class DesktopApiClient(
       savedPosts = DesktopJson.objList(map, "saved_posts").map(::parseFeedPost),
       repostedPosts = DesktopJson.objList(map, "reposted_posts").map(::parseFeedPost),
       lockedPosts = DesktopJson.objList(map, "locked_posts").map(::parseFeedPost),
+      verifiedTier = DesktopJson.str(map, "verified_tier").ifBlank { "none" },
     )
   }
 
@@ -2374,6 +2376,7 @@ class DesktopApiClient(
       authorUsername = DesktopJson.str(map, "author_username"),
       authorFullName = DesktopJson.str(map, "author_full_name"),
       authorAvatarUrl = DesktopJson.str(map, "author_avatar_url"),
+      authorVerifiedTier = DesktopJson.str(map, "author_verified_tier").ifBlank { "none" },
       isFollowingAuthor = DesktopJson.bool(map, "is_following_author"),
       isOwner = DesktopJson.bool(map, "is_owner"),
       privacy = DesktopJson.str(map, "privacy").ifBlank { "public" },
