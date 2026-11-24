@@ -719,7 +719,7 @@ func (s *Service) ActivateFreeTrial(
 	now := s.nowMs()
 	s.mu.Lock()
 	rec := s.getOrCreateRecordLocked(userID)
-	if rec.TrialUsed && rec.PlanStatus != "trial_active" {
+	if rec.TrialUsed {
 		s.mu.Unlock()
 		return VerificationStatusDTO{}, ErrTrialAlreadyUsed
 	}

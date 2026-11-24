@@ -1490,11 +1490,11 @@ func (h *Handler) writeUserConnectionsResponse(w http.ResponseWriter, r *http.Re
 		h.mu.Unlock()
 		_, _, isFollowing, followsYou := h.contacts.GetUserRelationshipForViewer(claims.UserID, targetID)
 		if targetPrivacy.IsPrivateAccount && !isFollowing {
-			writeJSON(w, http.StatusOK, contacts.ConnectionsPageResponse{Success: true, Page: 1, HasMore: false})
+			writeJSON(w, http.StatusOK, contacts.ContactsPageResponse{Success: true, Items: []contacts.ContactItem{}, Page: 1, PageSize: 30, HasMore: false})
 			return
 		}
 		if !isFollowers && (targetPrivacy.FollowingVisibility == "only_me" || (targetPrivacy.FollowingVisibility == "friends" && !(isFollowing && followsYou))) {
-			writeJSON(w, http.StatusOK, contacts.ConnectionsPageResponse{Success: true, Page: 1, HasMore: false})
+			writeJSON(w, http.StatusOK, contacts.ContactsPageResponse{Success: true, Items: []contacts.ContactItem{}, Page: 1, PageSize: 30, HasMore: false})
 			return
 		}
 	}

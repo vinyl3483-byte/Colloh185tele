@@ -123,6 +123,13 @@ func (s *Service) GetUserForViewer(callerID, targetID string) (DirectoryUser, bo
 	return u, ok, isFollowing
 }
 
+func (s *Service) GetUserByID(userID string) (DirectoryUser, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	u, ok := s.users[userID]
+	return u, ok
+}
+
 func (s *Service) GetUserRelationshipForViewer(callerID, targetID string) (DirectoryUser, bool, bool, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
